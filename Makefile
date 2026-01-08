@@ -15,11 +15,13 @@ OBJDIR = .Obj/
 
 # -----------FILES-----------#
 
-MAIN =	main.cpp 
+MAIN =	main.cpp
 
-CLASS = 
+CLASS = ConfigParser.cpp						LocationConfig.cpp			\
+		ServerConfig.cpp
 
-INC = 
+INC = ConfigParser.hpp						LocationConfig.hpp			\
+	ServerConfig.hpp
 
 # -----------SRCS-----------#
 
