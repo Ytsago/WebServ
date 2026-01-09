@@ -1,6 +1,6 @@
 # -----------RULES-----------#
 
-CFLAGS = -Wall -Wextra -MMD -MP -std=c++98
+CFLAGS = -Wall -Wextra -MMD -MP -std=c++98 -g3
 CC = c++
 AR = ar
 ARFLAG = -rcs
@@ -17,9 +17,9 @@ OBJDIR = .Obj/
 
 MAIN =	main.cpp 
 
-CLASS = 
+CLASS = WebServ.cpp
 
-INC = 
+INC = WebServ.hpp
 
 # -----------SRCS-----------#
 
@@ -36,7 +36,7 @@ HEADER = $(addprefix $(INCDIR), $(INC))
 
 LIBS =	
 
-NAME = Whatever 
+NAME = WebServ
 
 # -----------RULES-----------#
 
