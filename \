@@ -3,7 +3,6 @@
 #include <sys/epoll.h>
 #include <netinet/in.h>
 #include <unistd.h>
-#include <cstring>
 
 WebServ::WebServ() : logs(std::cout), errorLogs(std::cerr) {
 }
@@ -16,11 +15,14 @@ WebServ::WebServ(const WebServ &other) : logs(other.logs), errorLogs(other.error
 }
 
 WebServ	&WebServ::operator=(const WebServ &other) {
-	(void) other;
+	if (this != & other) {
+		this->logs = other.logs;
+		this->errorLogs = other.errorLogs;
+	}
 	return (*this);
 }
 
-bool	WebServ::newConnection(int epollFd, struct epoll_event& ev) const  {
+bool	WebServ::newConnection(int epollFd, struct epoll_event& ev) {
 	//Add a new client to the epoll list
    	struct sockaddr_in	clientAddr;
    	socklen_t dummyLen = sizeof(clientAddr);
@@ -31,25 +33,11 @@ bool	WebServ::newConnection(int epollFd, struct epoll_event& ev) const  {
    	Client *newClient = new Client;
 
    	newClient->fd = clientFd;
+   	newClient->msg = "";
 	ev.events = EPOLLIN | EPOLLET;
    	ev.data.ptr =  newClient;
-
-   	logs << "[LOGS] New connection on " << clientFd << std::endl;
-   	epoll_ctl(epollFd, EPOLL_CTL_ADD, clientFd, &ev);
-
-   	return 0;
-}
-
-//[TODO] Move to his own class.
-std::vector<char> Recipient::getMsg(int fd) {
-	char	buffer[BUFFSIZE];
-	std::vector<char>	msg;
-	int		bytes;
-
-	while ((bytes = recv(fd, buffer, BUFFSIZE, MSG_DONTWAIT)) > 0) {
-		msg.insert(msg.end(), buffer, buffer + bytes);
-	}
-	return msg;
+   	logs << "New connection on " << clientFd << std::endl;
+   	epoll_ctl(epoll_fd, EPOLL_CTL_ADD, clientFd, &baseEv);
 }
 
 bool	WebServ::checkConnection() const {
@@ -64,27 +52,14 @@ bool	WebServ::checkConnection() const {
 	ev.events = EPOLLIN, ev.data.fd = serverFd;
 	epoll_ctl(epollFd, EPOLL_CTL_ADD, serverFd, &ev);
 
-	logs << "[LOGS] Epoll is waiting for connection." << std::endl;
+	logs << "Epoll is waiting for connection." << std::endl;
 
 	while (1) {
 		int nfds = epoll_wait(epollFd, events, MAXEVENT, TIMEOUT);
 		for (int i = 0; i < nfds; i++) {
 			if (events[i].data.fd == serverFd) {
-				if (newConnection(epollFd, ev)) {
-					errorLogs << "Error, failed to handle new connection." << std::endl;
-					return 1;
-				}
-				logs << "[LOGS] Connection added !" << std::endl;
 			}
-			else if (events[i].events & EPOLLIN) {
-				Client* client = reinterpret_cast<Client*>(events[i].data.ptr);
-
-				logs << "[LOGS] Recieving a msg from client " << client->fd << std::endl;
-				client->msg = Recipient::getMsg(client->fd);
-
-				logs << "[DEBUG] Message received :\n" << client->msg.data() << std::endl;
-			}
-	   }
+	   }	
 	}
 }
 
@@ -119,19 +94,15 @@ bool	WebServ::serverSetup() {
 }
 
 bool	WebServ::run() {
-	//[TODO] Make the setup happend for all the server
 	if (serverSetup()) {
 		logs << "Setup failed" << std::endl;
 		return 1;
 	}
 
-	//[TODO] Check to make it work for multiple server
-	//[TODO] Security issue
 	if (checkConnection()) {
 		logs << "Connection failed" << std::endl;
 		return 1;
 	}
-	return 0;
 }
 
 WebServ::~WebServ() {

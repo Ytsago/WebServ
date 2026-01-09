@@ -2,6 +2,9 @@
 # define WEBSERV_HPP
 
 #include <iostream>
+#include <vector>
+
+#define BUFFSIZE 100
 
 class WebServ {
 	public:
@@ -11,9 +14,39 @@ class WebServ {
 		WebServ(const WebServ &other);				//Copy constructor
 		WebServ &operator=(const WebServ &other);	//Copy operator
 
-		bool	run() const;
+		bool	run();
 	private:
+		bool	checkConnection() const;
+		bool	newConnection(int epollFd, struct epoll_event& ev) const ;
+		bool	serverSetup();
+
+		int	serverFd;
+
+		static const size_t	PORT = 8080;
+		static const size_t	MAXEVENT = 10;
+		static const long	TIMEOUT = -1;
+
 		std::ostream& logs;
 		std::ostream& errorLogs;
+};
+
+class Client {
+	public:
+		Client() : fd(0), flags(0), logs(std::cout), errorLogs(std::cerr) {};
+		~Client() 	{};
+		bool methode();
+		std::vector<char> msg;
+		int fd;
+		char flags;
+		std::ostream&	logs;
+		std::ostream&	errorLogs;
+};
+
+
+class Recipient {
+	public:
+		Recipient() {};
+		~Recipient() {};
+		static std::vector<char>	getMsg(int fd);
 };
 #endif
