@@ -1,0 +1,407 @@
+[SETUP] Openning socket.
+[SETUP] binding socket.
+[SETUP] listening.
+[SETUP] success, socket is ready !
+[LOGS] Epoll is waiting for connection.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] New connection on 7
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+[LOGS] Recieving a msg from client 7
+Sending a response.
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] New connection on 7
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+[LOGS] Recieving a msg from client 7
+Sending a response.
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] New connection on 7
+Accpeting new connection.
+[LOGS] New connection on 8
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+[LOGS] Recieving a msg from client 7
+[LOGS] Recieving a msg from client 8
+Sending a response.
+Sending a response.
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] New connection on 7
+Accpeting new connection.
+[LOGS] New connection on 8
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+[LOGS] Recieving a msg from client 7
+[LOGS] Recieving a msg from client 8
+Sending a response.
+Sending a response.
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] New connection on 7
+Accpeting new connection.
+[LOGS] New connection on 8
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+[LOGS] Recieving a msg from client 7
+[LOGS] Recieving a msg from client 8
+Sending a response.
+Sending a response.
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] New connection on 7
+Accpeting new connection.
+[LOGS] New connection on 8
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+[LOGS] Recieving a msg from client 7
+[LOGS] Recieving a msg from client 8
+Sending a response.
+Sending a response.
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] New connection on 7
+Accpeting new connection.
+[LOGS] Connection added !
+Accpeting new connection.
+[LOGS] New connection on 8
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 8
+Sending a response.
+[LOGS] Recieving a msg from client 7
+[LOGS] Recieving a msg from client 6
+Accpeting new connection.
+[LOGS] New connection on 8
+Accpeting new connection.
+[LOGS] Connection added !
+Sending a response.
+Sending a response.
+[LOGS] Recieving a msg from client 8
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] New connection on 7
+Accpeting new connection.
+[LOGS] Connection added !
+Accpeting new connection.
+[LOGS] New connection on 8
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 8
+Sending a response.
+[LOGS] Recieving a msg from client 7
+Sending a response.
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+Accpeting new connection.
+[LOGS] New connection on 7
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 7
+Sending a response.
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+Accpeting new connection.
+[LOGS] New connection on 7
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 7
+Sending a response.
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.
+Accpeting new connection.
+[LOGS] New connection on 6
+Accpeting new connection.
+[LOGS] Connection added !
+[LOGS] Recieving a msg from client 6
+Sending a response.

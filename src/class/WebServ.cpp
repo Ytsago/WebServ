@@ -4,6 +4,28 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <cstring>
+#include <fstream>
+#include <fcntl.h>
+
+static const char	statusOk[] = "HTTP/1.1 200\r\n\r\n";
+
+std::vector<char> GetFile(std::string path) {
+	//Open file at the end ("ate")
+	std::ifstream	file(path.c_str(), std::ios::binary | std::ios::ate);
+
+	//Get file size
+	size_t	size = file.tellg();
+
+	//Return to the start
+	file.seekg(std::ios::beg);
+
+	std::vector<char>	buffer(size + 16);
+	buffer.insert(buffer.begin(), statusOk, statusOk + 16);
+	if (file.read(buffer.data() + 16, size)) {
+		return buffer;
+	}
+	return std::vector<char>();
+}
 
 WebServ::WebServ() : logs(std::cout), errorLogs(std::cerr) {
 }
@@ -27,6 +49,8 @@ bool	WebServ::newConnection(int epollFd, struct epoll_event& ev) const  {
 
 	logs << "Accpeting new connection." << std::endl;
    	int clientFd = accept(serverFd, (struct sockaddr*) &clientAddr, &dummyLen);
+   	if (clientFd == -1)
+   		return 0;
    		
    	Client *newClient = new Client;
 
@@ -37,7 +61,7 @@ bool	WebServ::newConnection(int epollFd, struct epoll_event& ev) const  {
    	logs << "[LOGS] New connection on " << clientFd << std::endl;
    	epoll_ctl(epollFd, EPOLL_CTL_ADD, clientFd, &ev);
 
-   	return 0;
+   	return clientFd;
 }
 
 //[TODO] Move to his own class.
@@ -52,6 +76,19 @@ std::vector<char> Recipient::getMsg(int fd) {
 	return msg;
 }
 
+int	Sender::sendMsg(std::vector<char> msg, int fd) {
+	static size_t i = 0; //[TODO] Has to be personnal
+	size_t	bytes;
+
+	bytes = send(fd, msg.data() + i, msg.size() - i, MSG_DONTWAIT);
+	if (bytes < 0) 
+		return -1;
+	i += bytes;
+	if (i == msg.size())
+		return 1;
+	return 0;
+}
+
 bool	WebServ::checkConnection() const {
 	int epollFd;
 	struct epoll_event	ev, events[MAXEVENT];
@@ -61,7 +98,9 @@ bool	WebServ::checkConnection() const {
 		return -1;
 	}
 
-	ev.events = EPOLLIN, ev.data.fd = serverFd;
+	Client server;
+	server.fd = serverFd;
+	ev.events = EPOLLIN | EPOLLET, ev.data.ptr = &server;
 	epoll_ctl(epollFd, EPOLL_CTL_ADD, serverFd, &ev);
 
 	logs << "[LOGS] Epoll is waiting for connection." << std::endl;
@@ -69,20 +108,29 @@ bool	WebServ::checkConnection() const {
 	while (1) {
 		int nfds = epoll_wait(epollFd, events, MAXEVENT, TIMEOUT);
 		for (int i = 0; i < nfds; i++) {
-			if (events[i].data.fd == serverFd) {
-				if (newConnection(epollFd, ev)) {
-					errorLogs << "Error, failed to handle new connection." << std::endl;
-					return 1;
-				}
+			Client* client = reinterpret_cast<Client*>(events[i].data.ptr);
+			if (events[i].data.ptr == &server) {
+				while(newConnection(epollFd, ev));
 				logs << "[LOGS] Connection added !" << std::endl;
 			}
 			else if (events[i].events & EPOLLIN) {
-				Client* client = reinterpret_cast<Client*>(events[i].data.ptr);
 
 				logs << "[LOGS] Recieving a msg from client " << client->fd << std::endl;
 				client->msg = Recipient::getMsg(client->fd);
 
-				logs << "[DEBUG] Message received :\n" << client->msg.data() << std::endl;
+				// logs << "[DEBUG] Message received :\n" << client->msg.data() << std::endl;
+
+				ev.events = EPOLLOUT;
+				ev.data.ptr = client;			
+				epoll_ctl(epollFd, EPOLL_CTL_MOD, client->fd, &ev);
+			}
+			else if (events[i].events & EPOLLOUT) {
+				logs << "Sending a response." << std::endl;
+				if (Sender::sendMsg(GetFile("/home/secros/Documents/Workshop/Web/index.html"), client->fd) == 1) {
+					epoll_ctl(epollFd, EPOLL_CTL_DEL, client->fd, 0);
+					close(client->fd);
+					delete(client);
+				}
 			}
 	   }
 	}
@@ -92,7 +140,7 @@ bool	WebServ::serverSetup() {
 	sockaddr_in servAddr;
 
 	logs << "[SETUP] Openning socket." << std::endl;
-	while ((serverFd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+	while ((serverFd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)) < 0) {
 		errorLogs << "Error, can't open socket retrying in 5 sec...\n";
 		sleep(5);
 	}
