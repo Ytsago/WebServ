@@ -6,9 +6,17 @@
 #include <cstring>
 #include <fstream>
 #include <fcntl.h>
+#include <signal.h>
 
 static const char	statusOk[] = "HTTP/1.1 200\r\n\r\n";
 static const std::string	location("/home/secros/Documents/Workshop/Web/");
+
+sig_atomic_t running = 1;
+
+void	sigHandler(int sig) {
+	if (sig == SIGINT)
+		running = 0;
+}
 
 std::vector<char> GetFile(std::string path) {
 	//Open file at the end ("ate")
@@ -21,7 +29,7 @@ std::vector<char> GetFile(std::string path) {
 	file.seekg(std::ios::beg);
 
 	std::vector<char>	buffer(size + 16);
-	buffer.insert(buffer.begin(), statusOk, statusOk + 16);
+	buffer.insert(buffer.begin(), statusOk, statusOk + (sizeof(statusOk) - 1));
 	if (file.read(buffer.data() + 16, size)) {
 		return buffer;
 	}
@@ -74,6 +82,7 @@ std::vector<char> Recipient::getMsg(int fd) {
 	while ((bytes = recv(fd, buffer, BUFFSIZE, MSG_DONTWAIT)) > 0) {
 		msg.insert(msg.end(), buffer, buffer + bytes);
 	}
+	msg.push_back(0);
 	return msg;
 }
 
@@ -106,7 +115,7 @@ bool	WebServ::checkConnection() const {
 
 	logs << "[LOGS] Epoll is waiting for connection." << std::endl;
 
-	while (1) {
+	while (running) {
 		int nfds = epoll_wait(epollFd, events, MAXEVENT, TIMEOUT);
 		for (int i = 0; i < nfds; i++) {
 			Client* client = reinterpret_cast<Client*>(events[i].data.ptr);
@@ -119,7 +128,7 @@ bool	WebServ::checkConnection() const {
 				logs << "[LOGS] Recieving a msg from client " << client->fd << std::endl;
 				client->msg = Recipient::getMsg(client->fd);
 
-				// logs << "[DEBUG] Message received :\n" << client->msg.data() << std::endl;
+				logs << "[DEBUG] Message received :\n" << client->msg.data() << std::endl;
 
 				ev.events = EPOLLOUT;
 				ev.data.ptr = client;			
@@ -127,7 +136,7 @@ bool	WebServ::checkConnection() const {
 			}
 			else if (events[i].events & EPOLLOUT) {
 				logs << "Sending a response." << std::endl;
-				if (Sender::sendMsg(GetFile(location), client->fd) == 1) {
+				if (Sender::sendMsg(GetFile(location + "index.html"), client->fd) == 1) {
 					epoll_ctl(epollFd, EPOLL_CTL_DEL, client->fd, 0);
 					close(client->fd);
 					delete(client);
@@ -135,6 +144,9 @@ bool	WebServ::checkConnection() const {
 			}
 	   }
 	}
+	close(serverFd);
+	close(epollFd);
+	return 0;
 }
 
 bool	WebServ::serverSetup() {
@@ -146,14 +158,18 @@ bool	WebServ::serverSetup() {
 		sleep(5);
 	}
 
+	int port = PORT;
 	servAddr.sin_family = AF_INET;
-	servAddr.sin_port = htons(PORT);
+	servAddr.sin_port = htons(port);
 	servAddr.sin_addr.s_addr = INADDR_ANY;
 
 	logs << "[SETUP] binding socket." << std::endl;
 	while (bind(serverFd, (struct sockaddr*)&servAddr, sizeof(servAddr))) {
-		errorLogs<< "ERROR, can't bind socket retrying in 5 sec...\n";
+		errorLogs<< "ERROR, can't bind socket retrying in 3 sec...\n";
 		sleep(3);
+		port++;
+		servAddr.sin_port = htons(port);
+		logs << "Current listening port: " << port << std::endl;
 	}
 
 
@@ -169,6 +185,7 @@ bool	WebServ::serverSetup() {
 
 bool	WebServ::run() {
 	//[TODO] Make the setup happend for all the server
+	signal(SIGINT, sigHandler);
 	if (serverSetup()) {
 		logs << "Setup failed" << std::endl;
 		return 1;
@@ -180,6 +197,7 @@ bool	WebServ::run() {
 		logs << "Connection failed" << std::endl;
 		return 1;
 	}
+	std::cout << "Good ending" << std::endl;
 	return 0;
 }
 
