@@ -4,7 +4,7 @@
 int main(int ac, char* const av[]) {
 	(void) ac, (void)av;
 	std::ofstream	logs("logs.txt");
-	WebServ server(logs, std::cerr);
+	WebServ server(std::cout, std::cerr);
 
 	server.run();
 }

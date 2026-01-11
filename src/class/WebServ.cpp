@@ -8,6 +8,7 @@
 #include <fcntl.h>
 
 static const char	statusOk[] = "HTTP/1.1 200\r\n\r\n";
+static const std::string	location("/home/secros/Documents/Workshop/Web/");
 
 std::vector<char> GetFile(std::string path) {
 	//Open file at the end ("ate")
@@ -126,7 +127,7 @@ bool	WebServ::checkConnection() const {
 			}
 			else if (events[i].events & EPOLLOUT) {
 				logs << "Sending a response." << std::endl;
-				if (Sender::sendMsg(GetFile("/home/secros/Documents/Workshop/Web/index.html"), client->fd) == 1) {
+				if (Sender::sendMsg(GetFile(location), client->fd) == 1) {
 					epoll_ctl(epollFd, EPOLL_CTL_DEL, client->fd, 0);
 					close(client->fd);
 					delete(client);
