@@ -30,6 +30,7 @@ class AMessage {
 		static const byte EOF = 1 << 0;
 		static const byte FAIL = 1 << 1;
 		static const byte INPUT = 1 << 2;
+		static const byte OUTPOUT = 1 << 3;
 	private:
 		byte	flags;
 };
