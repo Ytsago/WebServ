@@ -80,7 +80,9 @@ ServerConfig	ConfigParser::parse_server(std::ifstream &file)
 			continue;
 		std::stringstream ss(line);
 		ss >> key;
-		if (key == "listen")
+		if (key == "server")
+			throw ConfigException("Missing closing brace", this->_lineCount);
+		else if (key == "listen")
 		{
 			if (!(ss >> i_value))
 				throw ConfigException("Invalid listen value", this->_lineCount);
@@ -159,7 +161,9 @@ LocationConfig	ConfigParser::parse_location(std::ifstream &file, std::string hea
 			continue ;
 		std::stringstream ss_line(line);
 		ss_line >> key;
-		if (key == "autoindex")
+		if (key == "location")
+			throw ConfigException("Missing closing brace", this->_lineCount);
+		else if (key == "autoindex")
 		{
 			ss_line >> s_value;
 			if (s_value == "on")
@@ -195,8 +199,6 @@ LocationConfig	ConfigParser::parse_location(std::ifstream &file, std::string hea
 			location.set_is_cgi(true);
 			has_path = true;
 		}
-		else if (key == "location")
-			throw ConfigException("Missing closing brace", this->_lineCount);
 	}
 	if (location.get_is_cgi() && (!has_ext || !has_path))
 		throw ConfigException("CGI configuration is incomplete: both 'cgi_ext' and 'cgi_path' are required", this->_lineCount);
