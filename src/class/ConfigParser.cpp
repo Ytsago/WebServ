@@ -143,7 +143,8 @@ LocationConfig	ConfigParser::parse_location(std::ifstream &file, std::string hea
 	bool				has_path = false;
 
 	ss >> s_value;
-	ss >> s_value;
+	if (!(ss >> s_value))
+		throw ConfigException("Invalid path value", this->_lineCount);
 	location.set_path(s_value);
 	while (std::getline(file, line)) 
 	{
