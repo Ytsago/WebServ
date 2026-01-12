@@ -74,10 +74,10 @@ ServerConfig	ConfigParser::parse_server(std::ifstream &file)
 		if (line == "}")
 		{
 			closing_brace = true;
-			break ;
+			break;
 		}
 		if (line.empty() || line[0] == '#')
-			continue ;
+			continue;
 		std::stringstream ss(line);
 		ss >> key;
 		if (key == "listen")
@@ -152,7 +152,7 @@ LocationConfig	ConfigParser::parse_location(std::ifstream &file, std::string hea
 		if (line == "}")
 		{
 			closing_brace = true;
-			break ;
+			break;
 		}
 		if (line.empty() || line[0] == '#')
 			continue ;
