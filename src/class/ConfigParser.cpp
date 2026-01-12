@@ -1,14 +1,27 @@
 #include "ConfigParser.hpp"
 
-ConfigParser::ConfigParser() : _servConf(), _locConf() {}
+ConfigParser::ConfigParser() : _lineCount(0) {}
 
-ConfigParser::ConfigParser(const char *arg) : _servConf(), _locConf()
+ConfigParser::ConfigParser(const char *arg) : _lineCount(0)
 {
-	this->parse_input(arg);
-	this->print_conf();
+	this->parse_file(arg);
+}
+
+ConfigParser::ConfigParser(const ConfigParser &rhs) : _servers(rhs._servers), _lineCount(rhs._lineCount) {}
+
+ConfigParser	&ConfigParser::operator=(const ConfigParser &rhs)
+{
+	if (this != &rhs)
+	{
+		this->_servers = rhs._servers;
+		this->_lineCount = rhs._lineCount;
+	}
+	return (*this);
 }
 
 ConfigParser::~ConfigParser() {}
+
+std::vector<ServerConfig>	ConfigParser::get_servers() const {return (this->_servers);};
 
 static void	trim(std::string &str)
 {
@@ -24,83 +37,177 @@ static void	trim(std::string &str)
 	str = str.substr(first, (last - first + 1));
 }
 
-void	ConfigParser::parse_input(const char *arg)
+void	ConfigParser::parse_file(const char *arg)
 {
 	std::ifstream	inFile;
 	std::string		line;
 
 	inFile.open(arg);
 	if (!inFile.is_open())
-	{
-		//Exception
-	}
+		throw ConfigException("Couldn't open file", this->_lineCount);
 	while (getline(inFile, line))
 	{
+		this->_lineCount++;
 		trim(line);
 		if (line.empty() || line[0] == '#') 
 			continue;
 		if (line == "server {")
-			this->parse_server(inFile);
+			this->_servers.push_back(this->parse_server(inFile));
 	}
 	inFile.close();
 }
 
-void	ConfigParser::parse_server(std::ifstream &file)
+ServerConfig	ConfigParser::parse_server(std::ifstream &file)
 {
-	std::string line;
-	std::string key;
-	std::string s_value;
-	int			i_value;
-	size_t		ui_value;
+	ServerConfig	server;
+	bool			closing_brace = false;
+	std::string 	line;
+	std::string 	key;
+	std::string 	s_value;
+	int				i_value;
+	size_t			ui_value;
 
 	while (std::getline(file, line)) 
 	{
+		this->_lineCount++;
 		trim(line);
 		if (line == "}")
+		{
+			closing_brace = true;
 			break ;
+		}
 		if (line.empty() || line[0] == '#')
 			continue ;
 		std::stringstream ss(line);
 		ss >> key;
 		if (key == "listen")
 		{
-			ss >> i_value;
-			this->_servConf.set_listen_port(i_value);
+			if (!(ss >> i_value))
+				throw ConfigException("Invalid listen value", this->_lineCount);
+			server.set_listen_port(i_value);
 		}
 		else if (key == "server_name")
 		{
-			ss >> s_value;
-			this->_servConf.set_server_name(s_value);
+			if (!(ss >> s_value))
+				throw ConfigException("Invalid server_name value", this->_lineCount);
+			server.set_server_name(s_value);
 		}
 		else if (key == "host")
 		{
-			ss >> s_value;
-			this->_servConf.set_host(s_value);
+			if (!(ss >> s_value))
+				throw ConfigException("Invalid host value", this->_lineCount);
+			server.set_host(s_value);
 		}
 		else if (key == "root")
 		{
-			ss >> s_value;
-			this->_servConf.set_root(s_value);
+			if (!(ss >> s_value))
+				throw ConfigException("Invalid root value", this->_lineCount);
+			server.set_root(s_value);
 		}
 		else if (key == "index")
 		{
-			ss >> s_value;
-			this->_servConf.set_index(s_value);
+			if (!(ss >> s_value))
+				throw ConfigException("Invalid index value", this->_lineCount);
+			server.set_index(s_value);
 		}
 		else if (key == "error_page")
 		{
-			ss >> s_value;
-			this->_servConf.set_error_page(s_value);
+			if (!(ss >> s_value))
+				throw ConfigException("Invalid error_page value", this->_lineCount);
+			server.set_error_page(s_value);
 		}
 		else if (key == "client_max_body_size")
 		{
-			ss >> ui_value;
-			this->_servConf.set_client_mbs(ui_value);
+			if (!(ss >> ui_value))
+				throw ConfigException("Invalid client max body size value", this->_lineCount);
+			server.set_client_mbs(ui_value);
 		}
+		else if (key == "location")
+			server.push_location(this->parse_location(file, line));
 	}
+	if (!closing_brace)
+		throw ConfigException("Missing closing brace", this->_lineCount);
+	return (server);
 }
 
-void	ConfigParser::print_conf() const
+LocationConfig	ConfigParser::parse_location(std::ifstream &file, std::string header)
 {
-	this->_servConf.print();
+	LocationConfig		location;
+	std::stringstream	ss(header);
+	std::string			line;
+	std::string			key;
+	std::string			s_value;
+	bool				b_value;
+	bool				closing_brace = false;
+	bool				has_ext = false;
+	bool				has_path = false;
+
+	ss >> s_value;
+	ss >> s_value;
+	location.set_path(s_value);
+	while (std::getline(file, line)) 
+	{
+		this->_lineCount++;
+		trim(line);
+		if (line == "}")
+		{
+			closing_brace = true;
+			break ;
+		}
+		if (line.empty() || line[0] == '#')
+			continue ;
+		std::stringstream ss_line(line);
+		ss_line >> key;
+		if (key == "autoindex")
+		{
+			ss_line >> s_value;
+			if (s_value == "on")
+				b_value = true;
+			else if (s_value == "off")
+				b_value = false;
+			else
+				throw ConfigException("Invalid autoindex value", this->_lineCount);
+			location.set_autoindex(b_value);
+		}
+		else if (key == "allow_methods")
+		{
+			while (ss_line >> s_value)
+			{
+				if (s_value != "GET" && s_value != "POST" && s_value != "DELETE")
+					throw ConfigException("Invalid method value", this->_lineCount);
+				location.push_method(s_value);
+			}
+		}
+		else if (key == "cgi_ext")
+		{
+			if (!(ss_line >> s_value))
+				throw ConfigException("Invalid cgi_ext value", this->_lineCount);
+			location.set_cgi_ext(s_value);
+			location.set_is_cgi(true);
+			has_ext = true;
+		}
+		else if (key == "cgi_path")
+		{
+			if (!(ss_line >> s_value))
+				throw ConfigException("Invalid cgi_path value", this->_lineCount);
+			location.set_cgi_path(s_value);
+			location.set_is_cgi(true);
+			has_path = true;
+		}
+		else if (key == "location")
+			throw ConfigException("Missing closing brace", this->_lineCount);
+	}
+	if (location.get_is_cgi() && (!has_ext || !has_path))
+		throw ConfigException("CGI configuration is incomplete: both 'cgi_ext' and 'cgi_path' are required", this->_lineCount);
+	if (!closing_brace)
+		throw ConfigException("Missing closing brace", this->_lineCount);
+	return (location);
+}
+
+std::ostream &operator<<(std::ostream &out, const ConfigParser &conf)
+{
+	std::vector<ServerConfig>	servers = conf.get_servers();
+	for (size_t i = 0; i < servers.size(); i++)
+		out << servers[i];
+	return (out);
 }

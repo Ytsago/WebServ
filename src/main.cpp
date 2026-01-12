@@ -26,7 +26,16 @@ int main(int ac, char* const av[])
 {
 	if (ac == 2)
 	{
-		ConfigParser	cp(av[1]);
+		try
+		{
+			ConfigParser	parser(av[1]);
+			std::cout << parser;
+		}
+		catch (const std::exception& e) 
+		{
+			std::cout << e.what() << std::endl;
+			return (1);
+    	}
 	}
 }
 

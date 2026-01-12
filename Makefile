@@ -1,6 +1,6 @@
 # -----------RULES-----------#
 
-CFLAGS = -Wall -Wextra -MMD -MP -std=c++98
+CFLAGS = -Wall -Wextra -Werror -MMD -MP -std=c++98
 CC = c++
 AR = ar
 ARFLAG = -rcs
@@ -21,7 +21,7 @@ CLASS = ConfigParser.cpp						LocationConfig.cpp			\
 		ServerConfig.cpp
 
 INC = ConfigParser.hpp						LocationConfig.hpp			\
-	ServerConfig.hpp
+	ServerConfig.hpp						ConfigException.hpp
 
 # -----------SRCS-----------#
 
@@ -38,7 +38,7 @@ HEADER = $(addprefix $(INCDIR), $(INC))
 
 LIBS =	
 
-NAME = Whatever 
+NAME = webserv 
 
 # -----------RULES-----------#
 
