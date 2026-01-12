@@ -1,12 +1,12 @@
 #ifndef AMESSAGE_HPP
 # define AMESSAGE_HPP
 
-#include <ios>
 #include <iostream>
 #include <map>
 #include <vector>
 
 typedef unsigned char byte;
+typedef std::vector<byte> byteVector;
 
 class AMessage {
 	public:
@@ -15,24 +15,32 @@ class AMessage {
 		AMessage(const AMessage &other);				//Copy constructor
 		AMessage &operator=(const AMessage &other);	//Copy operator
 	
-		std::vector<byte>	buildMsg() const;
+		// byteVector	buildMsg() const;
 
-		inline void	setFlag(byte flag);
-		inline bool	getFlag(byte flag) const ;
-		inline void	clear();
-		std::ios_base::iostate test;
+		void	setFlag(byte flag);
+		const byte&	getFlag() const;
+		bool	checkFlag(byte flag) const ;
+		bool	eof() const;
+		bool	fail() const;
+		void	clear();
+
+		byteVector& getRaw();
+		void	setRaw(byteVector data);
 	protected:
-		std::vector<byte>	_entryLine;
-		std::vector<byte>	_body;
+		byteVector	_entryLine;
+		byteVector	_body;
 
 		std::map<std::string, std::string> _headerField;
 
-		static const byte EOF = 1 << 0;
-		static const byte FAIL = 1 << 1;
-		static const byte INPUT = 1 << 2;
-		static const byte OUTPOUT = 1 << 3;
+		static const byte	EOF = 1 << 0;
+		static const byte	FAIL = 1 << 1;
+		static const byte	INPUT = 1 << 2;
+		static const byte	ENTRY = 1 << 3;
+		static const byte	HEADER = 1 << 4;
+		static const byte	BODY = 1 << 5;
 	private:
 		byte	flags;
+		byteVector	_raw;
 };
 
 #endif

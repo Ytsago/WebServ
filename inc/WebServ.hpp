@@ -32,11 +32,12 @@ class WebServ {
 
 class Client {
 	public:
-		Client() : fd(0), flags(0), logs(std::cout), errorLogs(std::cerr) {};
+		Client() : fd(0), index(0), flags(0), logs(std::cout), errorLogs(std::cerr) {};
 		~Client() 	{};
 		bool methode();
 		std::vector<char> msg;
 		int fd;
+		size_t	index;
 		char flags;
 		std::ostream&	logs;
 		std::ostream&	errorLogs;
@@ -57,6 +58,6 @@ class Recipient {
 //Beware of fractionnal msg
 class Sender {
 	public:
-		static int sendMsg(std::vector<char> msg, int fd);
+		static int sendMsg(Client* client);
 };
 #endif

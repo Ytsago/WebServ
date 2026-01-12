@@ -86,15 +86,14 @@ std::vector<char> Recipient::getMsg(int fd) {
 	return msg;
 }
 
-int	Sender::sendMsg(std::vector<char> msg, int fd) {
-	static size_t i = 0; //[TODO] Has to be personnal
+int	Sender::sendMsg(Client* client) {
 	size_t	bytes;
 
-	bytes = send(fd, msg.data() + i, msg.size() - i, MSG_DONTWAIT);
+	bytes = send(client->fd, client->msg.data() + client->index, client->msg.size() - client->index, MSG_DONTWAIT);
 	if (bytes < 0) 
 		return -1;
-	i += bytes;
-	if (i == msg.size())
+	client->index += bytes;
+	if (client->index == client->msg.size())
 		return 1;
 	return 0;
 }
@@ -136,7 +135,8 @@ bool	WebServ::checkConnection() const {
 			}
 			else if (events[i].events & EPOLLOUT) {
 				logs << "Sending a response." << std::endl;
-				if (Sender::sendMsg(GetFile(location + "index.html"), client->fd) == 1) {
+				//[TODO] Logic broken here
+				if (Sender::sendMsg(client)) {
 					epoll_ctl(epollFd, EPOLL_CTL_DEL, client->fd, 0);
 					close(client->fd);
 					delete(client);

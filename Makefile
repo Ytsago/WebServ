@@ -17,9 +17,9 @@ OBJDIR = .Obj/
 
 MAIN =	main.cpp 
 
-CLASS = WebServ.cpp AMessage.cpp
+CLASS = WebServ.cpp AMessage.cpp Request.cpp Respond.cpp
 
-INC = WebServ.hpp AMessage.hpp
+INC = WebServ.hpp AMessage.hpp Request.hpp Respond.hpp
 
 # -----------SRCS-----------#
 
