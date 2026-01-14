@@ -1,4 +1,5 @@
 #include "WebServ.hpp"
+#include "ConfigParser.hpp"
 #include <fstream>
 
 //Experience for reading a binary file
@@ -24,10 +25,20 @@ void	fileReader() {
 }
 
 int main(int ac, char* const av[]) {
-	(void) ac, (void)av;
 	std::ofstream	logs("logs.txt");
-	WebServ server(std::cout, std::cerr);
-
-	server.run();
-	// fileReader();
+	
+	if (ac == 2)
+	{
+		try
+		{
+			WebServ server(std::cout, std::cerr);
+			server.run(av[1]);
+		}
+		catch (const std::exception& e) 
+		{
+			std::cout << e.what() << std::endl;
+			return (1);
+    	}
+	}
 }
+
