@@ -1,6 +1,6 @@
 # -----------RULES-----------#
 
-CFLAGS = -Wall -Wextra -MMD -MP -std=c++98 -g3
+CFLAGS = -Wall -Wextra -Werror -MMD -MP -std=c++98
 CC = c++
 AR = ar
 ARFLAG = -rcs
@@ -15,11 +15,15 @@ OBJDIR = .Obj/
 
 # -----------FILES-----------#
 
-MAIN =	main.cpp 
+MAIN =	main.cpp
 
-CLASS = WebServ.cpp AMessage.cpp
+CLASS = ConfigParser.cpp						LocationConfig.cpp			\
+		ServerConfig.cpp						WebServ.cpp					\
+		AMessage.cpp
 
-INC = WebServ.hpp AMessage.hpp
+INC = ConfigParser.hpp						LocationConfig.hpp			\
+	ServerConfig.hpp						ConfigException.hpp			\
+	WebServ.hpp								AMessage.hpp
 
 # -----------SRCS-----------#
 
@@ -36,7 +40,7 @@ HEADER = $(addprefix $(INCDIR), $(INC))
 
 LIBS =	
 
-NAME = WebServ
+NAME = webserv 
 
 # -----------RULES-----------#
 
