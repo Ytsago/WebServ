@@ -23,7 +23,8 @@ CLASS = ConfigParser.cpp						LocationConfig.cpp			\
 
 INC = ConfigParser.hpp						LocationConfig.hpp			\
 	ServerConfig.hpp						ConfigException.hpp			\
-	WebServ.hpp								AMessage.hpp
+	WebServ.hpp								AMessage.hpp				\
+	ANetContainer							Recipient.hpp
 
 # -----------SRCS-----------#
 

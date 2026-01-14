@@ -10,6 +10,7 @@ std::vector<byte>	AMessage::buildMsg() const {
 	std::vector<byte>	msg(_entryLine);
 
 	msg.insert(msg.end(), _body.begin(), _body.end());
+	return msg;
 }
 
 inline void	AMessage::setFlag(byte flag) {
