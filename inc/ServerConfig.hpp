@@ -6,6 +6,7 @@ class ServerConfig
 {
 	private:
 
+		int							_socket;
 		int							_listenPort;
 		std::string					_host;
 		std::string					_serverName;
@@ -22,6 +23,7 @@ class ServerConfig
 		ServerConfig	&operator=(const ServerConfig &rhs);
 		~ServerConfig();
 
+		int							get_socket() const;
 		int							get_listen_port() const;
 		std::string					get_host() const;
 		std::string					get_server_name() const;
@@ -31,6 +33,7 @@ class ServerConfig
 		size_t						get_client_max_body_size() const;
 		std::vector<LocationConfig>	get_locations() const;
 
+		void	set_socket(int value);
 		void	set_listen_port(int value);
 		void	set_host(std::string value);
 		void	set_server_name(std::string value);

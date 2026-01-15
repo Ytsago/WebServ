@@ -1,6 +1,6 @@
 # -----------RULES-----------#
 
-CFLAGS = -Wall -Wextra -Werror -MMD -MP -std=c++98
+CFLAGS = -Wall -Wextra -Werror -MMD -MP -g3 -std=c++98
 CC = c++
 AR = ar
 ARFLAG = -rcs
@@ -18,10 +18,13 @@ OBJDIR = .Obj/
 MAIN =	main.cpp
 
 CLASS = ConfigParser.cpp						LocationConfig.cpp			\
-		ServerConfig.cpp
+		ServerConfig.cpp						WebServ.cpp					\
+		AMessage.cpp
 
 INC = ConfigParser.hpp						LocationConfig.hpp			\
-	ServerConfig.hpp						ConfigException.hpp
+	ServerConfig.hpp						ConfigException.hpp			\
+	WebServ.hpp								AMessage.hpp				\
+	ANetContainer							Recipient.hpp
 
 # -----------SRCS-----------#
 

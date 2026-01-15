@@ -4,6 +4,8 @@
 #include <iostream>
 #include <vector>
 
+#include "ServerConfig.hpp"
+
 #define BUFFSIZE 100
 
 class WebServ {
@@ -14,15 +16,16 @@ class WebServ {
 		WebServ(const WebServ &other);				//Copy constructor
 		WebServ &operator=(const WebServ &other);	//Copy operator
 
-		bool	run();
+		bool	run(const char *arg);
 	private:
 		bool	checkConnection() const;
-		bool	newConnection(int epollFd, struct epoll_event& ev) const ;
-		bool	serverSetup();
+		bool	newConnection(struct epoll_event& ev, int serverFd) const ;
+		void	serverSetup(ServerConfig &server);
+		void	epoll_init(std::vector<ServerConfig> &server);
+		void	server_loop();
 
-		int	serverFd;
+		int	_epollFd;
 
-		static const size_t	PORT = 8080;
 		static const size_t	MAXEVENT = 10;
 		static const long	TIMEOUT = -1;
 
@@ -30,33 +33,4 @@ class WebServ {
 		std::ostream& errorLogs;
 };
 
-class Client {
-	public:
-		Client() : fd(0), flags(0), logs(std::cout), errorLogs(std::cerr) {};
-		~Client() 	{};
-		bool methode();
-		std::vector<char> msg;
-		int fd;
-		char flags;
-		std::ostream&	logs;
-		std::ostream&	errorLogs;
-};
-
-//Recipient use to receive message from a client,
-//it my be usefull to make it a part of the client class
-//Beware of fractionnal msg
-class Recipient {
-	public:
-		Recipient() {};
-		~Recipient() {};
-		static std::vector<char>	getMsg(int fd);
-};
-
-//Sender use to send message to a client,
-//it my be usefull to make it a part of the client class
-//Beware of fractionnal msg
-class Sender {
-	public:
-		static int sendMsg(std::vector<char> msg, int fd);
-};
 #endif
