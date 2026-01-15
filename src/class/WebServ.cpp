@@ -13,7 +13,7 @@
 #include "Recipient.hpp"
 
 static const char	statusOk[] = "HTTP/1.1 200\r\n\r\n";
-static const std::string	location("/home/secros/Documents/Workshop/Web/");
+static const std::string	location("./website/");
 
 sig_atomic_t running = 1;
 
