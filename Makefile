@@ -41,7 +41,7 @@ HEADER = $(addprefix $(INCDIR), $(INC))
 
 LIBS =	
 
-NAME = webserv 
+NAME = WebServ
 
 # -----------RULES-----------#
 
