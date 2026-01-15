@@ -13,7 +13,7 @@
 #include "Recipient.hpp"
 
 static const char	statusOk[] = "HTTP/1.1 200\r\n\r\n";
-static const std::string	location("/home/halnuma/Documents/cursus/WebServ/");
+static const std::string	location("/home/secros/Documents/Workshop/Web/");
 
 sig_atomic_t running = 1;
 
@@ -65,10 +65,10 @@ bool	WebServ::newConnection(struct epoll_event& ev, int serverFd) const  {
    	if (clientFd == -1)
    		return 1;
 
-   	Client *newClient = new Client;
+   	ANetContainer *newClient = new Client;
 
    	newClient->socket = clientFd;
-	ev.events = EPOLLIN | EPOLLET;
+	ev.events = EPOLLIN;
    	ev.data.ptr =  newClient;
 
    	logs << "[LOGS] New connection on " << clientFd << std::endl;
@@ -78,24 +78,24 @@ bool	WebServ::newConnection(struct epoll_event& ev, int serverFd) const  {
 }
 
 //[TODO] Move to his own class.
-void Recipient::getMsg(int fd) {
+void Recipient::getMsg(Client* client) {
 	char	buffer[BUFFSIZE];
-	std::vector<char>	msg;
 	int		bytes;
 
-	while ((bytes = recv(fd, buffer, BUFFSIZE, MSG_DONTWAIT)) > 0) {
-		msg.insert(msg.end(), buffer, buffer + bytes);
+	while ((bytes = recv(client->socket, buffer, BUFFSIZE, MSG_DONTWAIT)) > 0) {
+		client->msg.insert(client->msg.end(), buffer, buffer + bytes);
 	}
 }
 
-int	Sender::sendMsg(Client* client) {
+//[TODO] Change the argument when the client handle request and respond itself
+int	Sender::sendMsg(Client* client, std::vector<char> msg) {
 	size_t	bytes;
 
-	bytes = send(client->fd, client->msg.data() + client->index, client->msg.size() - client->index, MSG_DONTWAIT);
+	bytes = send(client->socket, msg.data() + client->index, msg.size() - client->index, MSG_DONTWAIT);
 	if (bytes < 0) 
 		return -1;
 	client->index += bytes;
-	if (client->index == client->msg.size())
+	if (client->index == msg.size())
 		return 1;
 	return 0;
 }
@@ -116,9 +116,9 @@ void	WebServ::server_loop() {
 			else if (events[i].events & EPOLLIN) {
 
 				logs << "[LOGS] Recieving a msg from client " << incoming->socket << std::endl;
-				Recipient::getMsg(incoming->socket);
+				Recipient::getMsg(dynamic_cast<Client*>(incoming));
 
-				logs << "[DEBUG] Message received :\n" << incoming->msg.data() << std::endl;
+				logs << "[DEBUG] Message received :\n" << incoming->msg.data() << '\0' << std::endl;
 
 				ev.events = EPOLLOUT;
 				ev.data.ptr = incoming;			
@@ -126,13 +126,11 @@ void	WebServ::server_loop() {
 			}
 			else if (events[i].events & EPOLLOUT) {
 				logs << "Sending a response." << std::endl;
-<<<<<<< HEAD
 				//[TODO] Logic broken here
-				if (Sender::sendMsg(client)) {
-					epoll_ctl(epollFd, EPOLL_CTL_DEL, client->fd, 0);
-					close(client->fd);
-					delete(client);
-=======
+				if (Sender::sendMsg(dynamic_cast<Client*>(incoming), GetFile(location + "index.html"))) {
+					epoll_ctl(_epollFd, EPOLL_CTL_DEL, incoming->socket, 0);
+					delete(incoming);
+				}
 				/**
 				Compare URI of request with paths of location and send
 				corresponding index
@@ -141,7 +139,6 @@ void	WebServ::server_loop() {
 				if (Sender::sendMsg(GetFile(response.getRaw()), incoming->socket) == 1) {
 					epoll_ctl(_epollFd, EPOLL_CTL_DEL, incoming->socket, 0);
 					delete(incoming);
->>>>>>> origin/clean_segfault
 				}
 				**/
 			}
@@ -162,7 +159,7 @@ void	WebServ::epoll_init(std::vector<ServerConfig> &servers) {
 	{
 		ANetContainer *server = new Server;
 		server->socket = it->get_socket();
-		ev.events = EPOLLIN | EPOLLET, ev.data.ptr = &server;
+		ev.events = EPOLLIN | EPOLLET, ev.data.ptr = server;
 		if ((epoll_ctl(_epollFd, EPOLL_CTL_ADD, it->get_socket(), &ev)) < 0)
 			throw ConfigException("tg", 2);
 	}

@@ -1,5 +1,8 @@
 #pragma once
 
+#include <iostream>
+#include <vector>
+
 class ANetContainer {
 	public:
 		ANetContainer() : socket(-1), logs(std::cout), errorLogs(std::cerr) {};
@@ -13,7 +16,7 @@ class ANetContainer {
 
 class Client : public ANetContainer {
 	public:
-		Client() : ANetContainer() {};
+		Client() : ANetContainer(), index(0) {};
 		virtual ~Client() 	{};
 		bool is_client() {return (true);};
 		size_t	index;
