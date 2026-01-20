@@ -14,10 +14,14 @@ Request	&Request::operator=(const Request &other) {
 	return *this;
 }
 
+std::string	Request::get_method() {return (this->_method);};
+std::string	Request::get_uri() {return (this->_uri);};
+std::string	Request::get_version() {return (this->_version);};
+
 //[TODO] Continue parsing here
 bool	Request::processEntry() {
 	byteVector&	raw = getRaw();
-	std::string*	info[3] = {&_methode, &_uri, &_version};
+	std::string*	info[3] = {&_method, &_uri, &_version};
 
 	for (size_t i = 0; i + 3 < raw.size(); i++) {
 		if (std::memcmp(&raw[i], PATTERN, 4) == 0) {

@@ -11,6 +11,10 @@ class Request : public AMessage {
 		Request(const Request &other);				//Copy constructor
 		Request &operator=(const Request &other);	//Copy operator
 
+		std::string	get_method();
+		std::string	get_uri();
+		std::string	get_version();
+
 		bool	processMsg();
 
 	private:
@@ -18,7 +22,7 @@ class Request : public AMessage {
 		bool	processHeader();
 		bool	processBody();
 
-		std::string	_methode;
+		std::string	_method;
 		std::string	_uri;
 		std::string	_version;
 };
