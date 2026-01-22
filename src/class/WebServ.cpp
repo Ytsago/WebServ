@@ -12,7 +12,6 @@
 #include "ANetContainer.hpp"
 #include "Recipient.hpp"
 
-static const char	statusOk[] = "HTTP/1.1 200\r\n\r\n";
 static const std::string	location("./website/");
 
 sig_atomic_t running = 1;
@@ -20,24 +19,6 @@ sig_atomic_t running = 1;
 void	sigHandler(int sig) {
 	if (sig == SIGINT)
 		running = 0;
-}
-
-std::vector<char> GetFile(std::string path) {
-	//Open file at the end ("ate")
-	std::ifstream	file(path.c_str(), std::ios::binary | std::ios::ate);
-
-	//Get file size
-	size_t	size = file.tellg();
-
-	//Return to the start
-	file.seekg(std::ios::beg);
-
-	std::vector<char>	buffer(size + 16);
-	buffer.insert(buffer.begin(), statusOk, statusOk + (sizeof(statusOk) - 1));
-	if (file.read(buffer.data() + 16, size)) {
-		return buffer;
-	}
-	return std::vector<char>();
 }
 
 WebServ::WebServ() : _epollFd(-1), logs(std::cout), errorLogs(std::cerr) {
@@ -127,10 +108,10 @@ void	WebServ::server_loop() {
 			else if (events[i].events & EPOLLOUT) {
 				logs << "Sending a response." << std::endl;
 				//[TODO] Logic broken here
-				if (Sender::sendMsg(dynamic_cast<Client*>(incoming), GetFile(location + "index.html"))) {
-					epoll_ctl(_epollFd, EPOLL_CTL_DEL, incoming->socket, 0);
-					delete(incoming);
-				}
+				// if (Sender::sendMsg(dynamic_cast<Client*>(incoming), GetFile(location + "index.html"))) {
+				// 	epoll_ctl(_epollFd, EPOLL_CTL_DEL, incoming->socket, 0);
+				// 	delete(incoming);
+				// }
 				/**
 				Compare URI of request with paths of location and send
 				corresponding index

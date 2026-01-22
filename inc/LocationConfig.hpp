@@ -11,6 +11,8 @@ class LocationConfig
 	private:
 
 		std::string					_path;
+		std::string					_root;
+		std::string					_index;
 		std::vector<std::string>	_methods;
 		bool						_autoindex;
 		std::string					_cgiExt;
@@ -25,6 +27,8 @@ class LocationConfig
 		~LocationConfig();
 
 		std::string					get_path() const;
+		std::string					get_root() const;
+		std::string					get_index() const;
 		std::vector<std::string>	get_methods() const;
 		bool						get_autoindex() const;
 		std::string					get_cgi_ext() const;
@@ -32,6 +36,8 @@ class LocationConfig
 		bool						get_is_cgi() const;
 
 		void	set_path(std::string value);
+		void	set_root(std::string value);
+		void	set_index(std::string value);
 		void	push_method(std::string value);
 		void	set_autoindex(bool value);
 		void	set_cgi_ext(std::string value);

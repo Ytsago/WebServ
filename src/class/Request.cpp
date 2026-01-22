@@ -1,7 +1,7 @@
 #include "Request.hpp"
 #include <cstring>
 
-static const byte PATTERN[4] = {'\r', '\n', '\r', '\n'};
+// static const byte PATTERN[4] = {'\r', '\n', '\r', '\n'};
 
 Request::Request() : AMessage() {
 }
@@ -14,44 +14,44 @@ Request	&Request::operator=(const Request &other) {
 	return *this;
 }
 
-std::string	Request::get_method() {return (this->_method);};
-std::string	Request::get_uri() {return (this->_uri);};
-std::string	Request::get_version() {return (this->_version);};
+std::string	Request::get_method() const {return (this->_method);};
+std::string	Request::get_uri() const {return (this->_uri);};
+std::string	Request::get_version() const {return (this->_version);};
 
 //[TODO] Continue parsing here
-bool	Request::processEntry() {
-	byteVector&	raw = getRaw();
-	std::string*	info[3] = {&_method, &_uri, &_version};
+// bool	Request::processEntry() {
+// 	byteVector&	raw = getRaw();
+// 	std::string*	info[3] = {&_method, &_uri, &_version};
 
-	for (size_t i = 0; i + 3 < raw.size(); i++) {
-		if (std::memcmp(&raw[i], PATTERN, 4) == 0) {
-			setFlag(ENTRY);
-			return 0;
-		}
-	}
-}
+// 	for (size_t i = 0; i + 3 < raw.size(); i++) {
+// 		if (std::memcmp(&raw[i], PATTERN, 4) == 0) {
+// 			setFlag(ENTRY);
+// 			return 0;
+// 		}
+// 	}
+// }
 
-bool	Request::processHeader() {
+// bool	Request::processHeader() {
 	
-}
+// }
 
-bool	Request::processBody() {
+// bool	Request::processBody() {
 
-}
+// }
 
-bool	Request::processMsg() {
-	byte f = getFlag();
+// bool	Request::processMsg() {
+// 	byte f = getFlag();
 
-	if (!(f & ENTRY)) {
+// 	if (!(f & ENTRY)) {
 
-	}
-	if (!(f & HEADER)) {
+// 	}
+// 	if (!(f & HEADER)) {
 		
-	}
-	if (!(f & BODY)) {
+// 	}
+// 	if (!(f & BODY)) {
 
-	}
-}
+// 	}
+// }
 
 Request::~Request() {
 }

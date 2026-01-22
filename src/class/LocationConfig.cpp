@@ -2,6 +2,8 @@
 
 LocationConfig::LocationConfig() 
 : _path(""),
+  _root(""),
+  _index(""),
   _methods(0),
   _autoindex(0),
   _cgiExt(""),
@@ -10,6 +12,8 @@ LocationConfig::LocationConfig()
 
 LocationConfig::LocationConfig(const LocationConfig &rhs)
 : _path(rhs._path),
+  _root(rhs._root),
+  _index(rhs._index),
   _methods(rhs._methods),
   _autoindex(rhs._autoindex),
   _cgiExt(rhs._cgiExt),
@@ -21,6 +25,8 @@ LocationConfig	&LocationConfig::operator=(const LocationConfig &rhs)
 	if (this != &rhs)
 	{
 		this->_path = rhs._path;
+		this->_root = rhs._root;
+		this->_index = rhs._index;
 		this->_methods = rhs._methods;
 		this->_autoindex = rhs._autoindex;
 		this->_cgiExt = rhs._cgiExt;
@@ -33,6 +39,8 @@ LocationConfig	&LocationConfig::operator=(const LocationConfig &rhs)
 LocationConfig::~LocationConfig() {}
 
 std::string					LocationConfig::get_path() const {return (this->_path);};
+std::string					LocationConfig::get_root() const {return (this->_root);};
+std::string					LocationConfig::get_index() const {return (this->_index);};
 std::vector<std::string>	LocationConfig::get_methods() const {return (this->_methods);};
 bool						LocationConfig::get_autoindex() const {return (this->_autoindex);};
 std::string					LocationConfig::get_cgi_ext() const {return (this->_cgiExt);};
@@ -40,6 +48,8 @@ std::string					LocationConfig::get_cgi_path() const {return (this->_cgiPath);};
 bool						LocationConfig::get_is_cgi() const {return (this->_isCgi);};
 
 void	LocationConfig::set_path(std::string value) {this->_path = value;};
+void	LocationConfig::set_root(std::string value) {this->_root = value;};
+void	LocationConfig::set_index(std::string value) {this->_index = value;};
 void	LocationConfig::push_method(std::string value) {this->_methods.push_back(value);};
 void	LocationConfig::set_autoindex(bool value) {this->_autoindex = value;};
 void	LocationConfig::set_cgi_ext(std::string value) {this->_cgiExt = value;};

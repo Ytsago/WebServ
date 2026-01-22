@@ -174,6 +174,18 @@ LocationConfig	ConfigParser::parse_location(std::ifstream &file, std::string hea
 				throw ConfigException("Invalid autoindex value", this->_lineCount);
 			location.set_autoindex(b_value);
 		}
+		else if (key == "root")
+		{
+			if (!(ss >> s_value))
+				throw ConfigException("Invalid root value", this->_lineCount);
+			location.set_root(s_value);
+		}
+		else if (key == "index")
+		{
+			if (!(ss >> s_value))
+				throw ConfigException("Invalid index value", this->_lineCount);
+			location.set_index(s_value);
+		}
 		else if (key == "allow_methods")
 		{
 			while (ss_line >> s_value)

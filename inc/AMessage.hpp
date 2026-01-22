@@ -6,7 +6,7 @@
 #include <vector>
 
 typedef unsigned char byte;
-typedef std::vector<byte> byteVector;
+typedef std::vector<char> byteVector;
 
 class AMessage {
 	public:
@@ -32,7 +32,7 @@ class AMessage {
 
 		std::map<std::string, std::string> _headerField;
 
-		static const byte	EOF = 1 << 0;
+		static const byte	_EOF = 1 << 0;
 		static const byte	FAIL = 1 << 1;
 		static const byte	INPUT = 1 << 2;
 		static const byte	ENTRY = 1 << 3;

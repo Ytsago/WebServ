@@ -11,9 +11,9 @@ class Request : public AMessage {
 		Request(const Request &other);				//Copy constructor
 		Request &operator=(const Request &other);	//Copy operator
 
-		std::string	get_method();
-		std::string	get_uri();
-		std::string	get_version();
+		std::string	get_method() const;
+		std::string	get_uri() const;
+		std::string	get_version() const;
 
 		bool	processMsg();
 

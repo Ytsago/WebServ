@@ -37,7 +37,7 @@ AMessage	&AMessage::operator=(const AMessage &other) {
 void	AMessage::setFlag(byte flag) {flags |= flag;}
 const byte&	AMessage::getFlag() const {return flags;}
 bool	AMessage::checkFlag(byte flag) const {return (flags & flag) > 0;}
-bool	AMessage::eof() const {return (flags & EOF) > 0;}
+bool	AMessage::eof() const {return (flags & _EOF) > 0;}
 bool	AMessage::fail() const {return (flags & FAIL) > 0;}
 void	AMessage::clear() {*this = AMessage();}
 

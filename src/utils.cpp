@@ -1,0 +1,33 @@
+#include <vector>
+#include <fstream>
+#include <string>
+#include <fcntl.h>
+#include <sstream>
+#include "AMessage.hpp"
+
+byteVector	GetFile(std::string path) {
+	//Open file at the end ("ate")
+	std::ifstream	file(path.c_str(), std::ios::binary | std::ios::ate);
+
+	//Get file size
+	size_t	size = file.tellg();
+
+	//Return to the start
+	file.seekg(std::ios::beg);
+
+	byteVector	buffer;
+	if (file.read(buffer.data() + 16, size)) {
+		return buffer;
+	}
+	return byteVector();
+}
+
+std::string	int_to_string(int n)
+{
+	std::stringstream 	ss;
+	std::string			str_n;
+
+	ss << n;
+	str_n = ss.str();
+	return (str_n);
+}

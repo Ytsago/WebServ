@@ -2,7 +2,13 @@
 # define RESPONSE_HPP
 
 #include <iostream>
+#include <cmath>
+
 #include "AMessage.hpp"
+#include "Request.hpp"
+#include "ServerConfig.hpp"
+#include "LocationConfig.hpp"
+#include "utils.hpp"
 
 class Response : public AMessage{
 	public:
@@ -15,6 +21,8 @@ class Response : public AMessage{
 		void	build_get_response(ServerConfig &server, Request &request);
 		void	build_post_response(ServerConfig &server, Request &request);
 		void	build_delete_response(ServerConfig &server, Request &request);
+		void	build_entry_line(int code, std::string status);
+		void	build_header(size_t body_size, std::string &path, bool connection);
 	private:
 
 		
