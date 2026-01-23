@@ -87,7 +87,7 @@ void	Request::processHeader() {
 	std::string	field(raw.begin(), endLine);
 	size_t	commaPos = field.find(':');
 	
-	if (commaPos == field.npos || commaPos != field.rfind(':')) {
+	if (commaPos == field.npos) {
 		setFlag(FLAG_FAIL);
 		return ;
 	}
@@ -126,7 +126,7 @@ bool	Request::processMsg() {
 
 
 const std::string&	Request::getMethode() const {
-	return this->_methode;
+	return _methode;
 }
 
 const std::string&	Request::getUri() const {

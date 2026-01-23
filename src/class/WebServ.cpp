@@ -9,7 +9,8 @@
 #include <fcntl.h>
 #include <signal.h>
 #include "ConfigException.hpp"
-#include "ANetContainer.hpp"
+#include "Client.hpp"
+#include "Server.hpp"
 #include "Recipient.hpp"
 
 static const char	statusOk[] = "HTTP/1.1 200\r\n\r\n";
@@ -67,7 +68,7 @@ bool	WebServ::newConnection(struct epoll_event& ev, int serverFd) const  {
 
    	ANetContainer *newClient = new Client;
 
-   	newClient->socket = clientFd;
+   	newClient->setSocket(clientFd);
 	ev.events = EPOLLIN;
    	ev.data.ptr =  newClient;
 
@@ -82,20 +83,23 @@ void Recipient::getMsg(Client* client) {
 	char	buffer[BUFFSIZE];
 	int		bytes;
 
-	while ((bytes = recv(client->socket, buffer, BUFFSIZE, MSG_DONTWAIT)) > 0) {
-		client->msg.insert(client->msg.end(), buffer, buffer + bytes);
-	}
+	bytes = recv(client->getSocket(), buffer, BUFFSIZE, MSG_DONTWAIT);
+	// client->msg.insert(client->msg.end(), buffer, buffer + bytes);
+	client->getRequest().append(buffer, bytes);
+	client->getRequest().processMsg();
+	std::cout << std::string(buffer, buffer + bytes) << std::endl;
+	std::cout << client->getRequest() << std::endl;
 }
 
 //[TODO] Change the argument when the client handle request and respond itself
 int	Sender::sendMsg(Client* client, std::vector<char> msg) {
 	size_t	bytes;
 
-	bytes = send(client->socket, msg.data() + client->index, msg.size() - client->index, MSG_DONTWAIT);
+	bytes = send(client->getSocket(), msg.data() + client->getIndex(), msg.size() - client->getIndex(), MSG_DONTWAIT);
 	if (bytes < 0) 
 		return -1;
-	client->index += bytes;
-	if (client->index == msg.size())
+	client->setIndex(client->getIndex() + bytes);
+	if (client->getIndex() == msg.size())
 		return 1;
 	return 0;
 }
@@ -109,26 +113,26 @@ void	WebServ::server_loop() {
 		int nfds = epoll_wait(_epollFd, events, MAXEVENT, TIMEOUT);
 		for (int i = 0; i < nfds; i++) {
 			ANetContainer* incoming = reinterpret_cast<ANetContainer*>(events[i].data.ptr);
-			if (!incoming->is_client()) {
-				while (!newConnection(ev, incoming->socket));
+			if (!incoming->isClient()) {
+				while (!newConnection(ev, incoming->getSocket()));
 				logs << "[LOGS] Connection added !" << std::endl;
 			}
 			else if (events[i].events & EPOLLIN) {
 
-				logs << "[LOGS] Recieving a msg from client " << incoming->socket << std::endl;
+				logs << "[LOGS] Recieving a msg from client " << incoming->getSocket() << std::endl;
 				Recipient::getMsg(dynamic_cast<Client*>(incoming));
 
-				logs << "[DEBUG] Message received :\n" << incoming->msg.data() << '\0' << std::endl;
+				// logs << "[DEBUG] Message received :\n" << incoming->msg.data() << '\0' << std::endl;
 
 				ev.events = EPOLLOUT;
 				ev.data.ptr = incoming;			
-				epoll_ctl(_epollFd, EPOLL_CTL_MOD, incoming->socket, &ev);
+				epoll_ctl(_epollFd, EPOLL_CTL_MOD, incoming->getSocket(), &ev);
 			}
 			else if (events[i].events & EPOLLOUT) {
 				logs << "Sending a response." << std::endl;
 				//[TODO] Logic broken here
 				if (Sender::sendMsg(dynamic_cast<Client*>(incoming), GetFile(location + "index.html"))) {
-					epoll_ctl(_epollFd, EPOLL_CTL_DEL, incoming->socket, 0);
+					epoll_ctl(_epollFd, EPOLL_CTL_DEL, incoming->getSocket(), 0);
 					delete(incoming);
 				}
 				/**
@@ -158,8 +162,8 @@ void	WebServ::epoll_init(std::vector<ServerConfig> &servers) {
 	for (it = servers.begin(); it != servers.end(); it++)
 	{
 		ANetContainer *server = new Server;
-		server->socket = it->get_socket();
-		ev.events = EPOLLIN | EPOLLET, ev.data.ptr = server;
+		server->setSocket(it->get_socket());
+		ev.events = EPOLLIN, ev.data.ptr = server;
 		if ((epoll_ctl(_epollFd, EPOLL_CTL_ADD, it->get_socket(), &ev)) < 0)
 			throw ConfigException("tg", 2);
 	}

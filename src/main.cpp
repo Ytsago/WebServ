@@ -26,10 +26,10 @@ std::vector<unsigned char>	fileReader(std::string path) {
 	file.close();
 	return data;
 }
-/*
+
 int main(int ac, char* const av[]) {
 	std::ofstream	logs("logs.txt");
-	
+
 	if (ac == 2)
 	{
 		try
@@ -44,10 +44,10 @@ int main(int ac, char* const av[]) {
     	}
 	}
 }
-*/
+
 
 void	createTestFile() {
-	std::ofstream	file("./TestGround/Header/simpleHeader");
+	std::ofstream	file("./TestGround/Header/mozillaHeader");
 
 	file << "GET / HTTP/1.1\r\nHost: localhost\r\n\r\nHelloWorld";
 }
@@ -63,14 +63,14 @@ void	partialReader(const std::string& path, Request& request) {
 	}
 	close(fd);
 }
-
-int main() {
-	Request	request;	
-
-	// request.setRaw(fileReader("./TestGround/Header/simpleHeader"));
-	// std::cout << request.getRaw().data() << std::endl;
-	partialReader("./TestGround/Header/simpleHeader", request);
-	if (request.fail())
-		std::cout << "Error. Request is not conform." << std::endl;
-	std::cout << request << std::endl;
-}
+//
+// int main() {
+// 	Request	request;	
+//
+// 	// request.setRaw(fileReader("./TestGround/Header/simpleHeader"));
+// 	// std::cout << request.getRaw().data() << std::endl;
+// 	partialReader("./TestGround/Header/mozillaHeader", request);
+// 	if (request.fail())
+// 		std::cout << "Error. Request is not conform." << std::endl;
+// 	std::cout << request << std::endl;
+// }

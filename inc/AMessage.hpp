@@ -12,7 +12,7 @@ typedef std::map<std::string, std::string> headerMap;
 class AMessage {
 	public:
 		AMessage();										//Default constructor
-		~AMessage();										//Destructor
+		virtual ~AMessage();										//Destructor
 		AMessage(const AMessage &other);				//Copy constructor
 		AMessage &operator=(const AMessage &other);	//Copy operator
 	

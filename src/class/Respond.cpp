@@ -24,7 +24,7 @@ void	Respond::buildMsg() {
 		msg.insert(msg.end(), PAT, PAT + 4);
 	}
 	msg.insert(msg.end(), PAT, PAT + 4);
-	if (this->checkFlag(BODY))
+	if (this->checkFlag(FLAG_BODY))
 		msg.insert(msg.end(), _body.begin(), _body.end() -1);
 	setRaw(msg);
 }
