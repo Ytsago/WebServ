@@ -19,12 +19,13 @@ MAIN =	main.cpp
 
 CLASS = ConfigParser.cpp						LocationConfig.cpp			\
 		ServerConfig.cpp						WebServ.cpp					\
-		AMessage.cpp
+		AMessage.cpp							Request.cpp
 
 INC = ConfigParser.hpp						LocationConfig.hpp			\
 	ServerConfig.hpp						ConfigException.hpp			\
 	WebServ.hpp								AMessage.hpp				\
-	ANetContainer							Recipient.hpp
+	ANetContainer							Recipient.hpp				\
+	Request.hpp
 
 # -----------SRCS-----------#
 

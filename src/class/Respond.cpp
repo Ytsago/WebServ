@@ -16,7 +16,6 @@ Respond	&Respond::operator=(const Respond &other) {
 void	Respond::buildMsg() {
 	byteVector	msg(_entryLine);
 
-	msg.insert(msg.end(), _body.begin(), _body.end() -1);
 	msg.insert(msg.end(), PAT, PAT + 4);
 	for (std::map<std::string, std::string>::const_iterator it = _headerField.begin(); it != _headerField.end(); it++) {
 		msg.insert(msg.end(), it->first.begin(), it->first.end() -1);

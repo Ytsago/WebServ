@@ -35,14 +35,23 @@ AMessage	&AMessage::operator=(const AMessage &other) {
 }
 
 void	AMessage::setFlag(byte flag) {flags |= flag;}
+void	AMessage::clearFlag(byte flag) {flags ^= flag;}
 const byte&	AMessage::getFlag() const {return flags;}
 bool	AMessage::checkFlag(byte flag) const {return (flags & flag) > 0;}
-bool	AMessage::eof() const {return (flags & EOF) > 0;}
-bool	AMessage::fail() const {return (flags & FAIL) > 0;}
+bool	AMessage::eof() const {return (flags & FLAG_EOF) > 0;}
+bool	AMessage::fail() const {return (flags & FLAG_FAIL) > 0;}
 void	AMessage::clear() {*this = AMessage();}
 
 byteVector&	AMessage::getRaw() {return _raw;}
-void	AMessage::setRaw(byteVector data) {_raw = data;}
+void	AMessage::setRaw(const byteVector& data) {_raw = data;}
+
+void	AMessage::append(char* buffer, size_t size) {
+	_raw.insert(_raw.end(), buffer, buffer + size);
+	clearFlag(FLAG_EOF);
+}
+
+const headerMap&	AMessage::getHeader() const {return _headerField;}
+const byteVector&	AMessage::getBody() const {return _body;}
 
 AMessage::~AMessage() {
 }
