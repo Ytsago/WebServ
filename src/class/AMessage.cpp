@@ -46,8 +46,9 @@ byteVector&	AMessage::getRaw() {return _raw;}
 void	AMessage::setRaw(const byteVector& data) {_raw = data;}
 
 void	AMessage::append(char* buffer, size_t size) {
+	if (size == 0)
+		setFlag(FLAG_EOF);
 	_raw.insert(_raw.end(), buffer, buffer + size);
-	clearFlag(FLAG_EOF);
 }
 
 const headerMap&	AMessage::getHeader() const {return _headerField;}

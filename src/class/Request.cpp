@@ -47,11 +47,9 @@ void	Request::processEntry() {
 
 	endLine = std::find(raw.begin(), raw.end(), '\r');
 	if (endLine == raw.end() || endLine +1 == raw.end()) {
-		this->setFlag(FLAG_EOF);
 		return ;
 	}
 	if (endLine + 1 != raw.end() && *(endLine + 1) != '\n') {
-		this->setFlag(FLAG_FAIL);
 		return ;
 	}
 
@@ -69,7 +67,7 @@ void	Request::processHeader() {
 
 	endLine = std::find(raw.begin(), raw.end(), '\r');
 	if (endLine == raw.end() || endLine +1 == raw.end()) {
-		this->setFlag(FLAG_EOF);
+		// this->setFlag(FLAG_EOF);
 		return ;
 	}
 
@@ -103,22 +101,30 @@ void	Request::processBody() {
 
 	this->_body.insert(_body.end(), raw.begin(), raw.end());
 	raw.erase(raw.begin(), raw.end());
-	setFlag(FLAG_EOF);
 	return ;
 }
 
 bool	Request::processMsg() {
 	const byte& flag = this->getFlag();
 
-	while ((flag & FLAG_EOF) == 0) {
+	while (!(checkFlag(FLAG_EOF | FLAG_FAIL))) {
+		size_t prevSize = getRaw().size();
 		if (this->fail())
 			return 1;
 		if ((flag & FLAG_ENTRY) == 0)
 			this->processEntry();
 		else if ((flag & FLAG_HEADER) == 0)
 			this->processHeader();
-		else if ((flag & FLAG_BODY) == 0)
+		else if ((flag & FLAG_BODY) == 0) {
 			this->processBody();
+		}
+
+		if (_methode == "GET" && (flag & FLAG_HEADER) > 0) {
+			setFlag(FLAG_EOF);
+			break ;
+		}
+		if (prevSize == getRaw().size())
+			break ;
 	}
 	//TODO remove this line (it's for testing purpose)
 	return 0;

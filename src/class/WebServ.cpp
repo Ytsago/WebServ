@@ -25,6 +25,9 @@ void	sigHandler(int sig) {
 
 std::vector<char> GetFile(std::string path) {
 	//Open file at the end ("ate")
+	
+	if (*path.rbegin() == '/')
+		path += "index.html";
 	std::ifstream	file(path.c_str(), std::ios::binary | std::ios::ate);
 
 	//Get file size
@@ -84,11 +87,9 @@ void Recipient::getMsg(Client* client) {
 	int		bytes;
 
 	bytes = recv(client->getSocket(), buffer, BUFFSIZE, MSG_DONTWAIT);
-	// client->msg.insert(client->msg.end(), buffer, buffer + bytes);
 	client->getRequest().append(buffer, bytes);
 	client->getRequest().processMsg();
-	std::cout << std::string(buffer, buffer + bytes) << std::endl;
-	std::cout << client->getRequest() << std::endl;
+	// std::cout << bytes << " EOF: "<< client->getRequest().eof() << std::endl; REMOVE
 }
 
 //[TODO] Change the argument when the client handle request and respond itself
@@ -118,20 +119,23 @@ void	WebServ::server_loop() {
 				logs << "[LOGS] Connection added !" << std::endl;
 			}
 			else if (events[i].events & EPOLLIN) {
-
+				Client* client = dynamic_cast<Client*>(incoming);
 				logs << "[LOGS] Recieving a msg from client " << incoming->getSocket() << std::endl;
 				Recipient::getMsg(dynamic_cast<Client*>(incoming));
 
 				// logs << "[DEBUG] Message received :\n" << incoming->msg.data() << '\0' << std::endl;
-
-				ev.events = EPOLLOUT;
-				ev.data.ptr = incoming;			
-				epoll_ctl(_epollFd, EPOLL_CTL_MOD, incoming->getSocket(), &ev);
+				if (client->getRequest().eof()) {
+					logs << "[LOGS] Message: \n" << client->getRequest() << std::endl;
+					ev.events = EPOLLOUT;
+					ev.data.ptr = incoming;			
+					epoll_ctl(_epollFd, EPOLL_CTL_MOD, incoming->getSocket(), &ev);
+				}
 			}
 			else if (events[i].events & EPOLLOUT) {
+				Client* client = dynamic_cast<Client*>(incoming);
 				logs << "Sending a response." << std::endl;
 				//[TODO] Logic broken here
-				if (Sender::sendMsg(dynamic_cast<Client*>(incoming), GetFile(location + "index.html"))) {
+				if (Sender::sendMsg(dynamic_cast<Client*>(incoming), GetFile(location + client->getRequest().getUri()))) {
 					epoll_ctl(_epollFd, EPOLL_CTL_DEL, incoming->getSocket(), 0);
 					delete(incoming);
 				}

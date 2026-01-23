@@ -1,4 +1,5 @@
 #include "ANetContainer.hpp"
+#include <unistd.h>
 
 ANetContainer::ANetContainer() : socket(-1), logs(std::cout), errLogs(std::cerr) {
 }
@@ -20,4 +21,5 @@ void	ANetContainer::setSocket(const int& socket) {this->socket = socket;}
 int		ANetContainer::getSocket() const {return socket;}
 
 ANetContainer::~ANetContainer() {
+	close(socket);
 }

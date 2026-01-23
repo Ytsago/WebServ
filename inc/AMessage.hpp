@@ -34,19 +34,17 @@ class AMessage {
 		const headerMap&	getHeader() const;
 		const byteVector&	getBody() const;
 
-	protected:
-		byteVector	_entryLine;
-		byteVector	_body;
-
-		headerMap	_headerField;
-
 		static const byte	FLAG_EOF = 1 << 0;
 		static const byte	FLAG_FAIL = 1 << 1;
 		static const byte	FLAG_INPUT = 1 << 2;
 		static const byte	FLAG_ENTRY = 1 << 3;
 		static const byte	FLAG_HEADER = 1 << 4;
 		static const byte	FLAG_BODY = 1 << 5;
+	protected:
+		byteVector	_entryLine;
+		byteVector	_body;
 
+		headerMap	_headerField;
 	private:
 		byte	flags;
 		byteVector	_raw;
