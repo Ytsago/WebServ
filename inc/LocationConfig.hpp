@@ -6,6 +6,8 @@
 #include <cstddef>
 #include <vector>
 
+class ServerConfig;
+
 class LocationConfig
 {
 	private:
@@ -33,7 +35,7 @@ class LocationConfig
 		bool						get_autoindex() const;
 		std::string					get_cgi_ext() const;
 		std::string					get_cgi_path() const;
-		bool						get_is_cgi() const;
+		bool						is_cgi() const;
 
 		void	set_path(std::string value);
 		void	set_root(std::string value);

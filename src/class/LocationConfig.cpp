@@ -45,7 +45,7 @@ std::vector<std::string>	LocationConfig::get_methods() const {return (this->_met
 bool						LocationConfig::get_autoindex() const {return (this->_autoindex);};
 std::string					LocationConfig::get_cgi_ext() const {return (this->_cgiExt);};
 std::string					LocationConfig::get_cgi_path() const {return (this->_cgiPath);};
-bool						LocationConfig::get_is_cgi() const {return (this->_isCgi);};
+bool						LocationConfig::is_cgi() const {return (this->_isCgi);};
 
 void	LocationConfig::set_path(std::string value) {this->_path = value;};
 void	LocationConfig::set_root(std::string value) {this->_root = value;};
@@ -59,7 +59,9 @@ void	LocationConfig::set_is_cgi(bool value) {this->_isCgi = value;};
 std::ostream &operator<<(std::ostream &out, const LocationConfig &location)
 {
 	out << "location: " << '\n' 
-	<< "\tis_cgi: " << (location.get_is_cgi() ? "true" : "false") << '\n'
+	<< "\tis_cgi: " << (location.is_cgi() ? "true" : "false") << '\n'
+	<< "\troot: " << location.get_root() << '\n'
+	<< "\tindex: " << location.get_index() << '\n'
 	<< "\tpath: " << location.get_path() << '\n';
 	if (location.get_methods().size() > 0)
 	{
@@ -70,7 +72,7 @@ std::ostream &operator<<(std::ostream &out, const LocationConfig &location)
 		out << '\n';
 	}
 	out << "\tautoindex: " << location.get_autoindex() << '\n';
-	if (location.get_is_cgi())
+	if (location.is_cgi())
 	{
 		out << "\tcgi_ext: " << location.get_cgi_ext() << '\n'
 		<< "\tcgi_path: " << location.get_cgi_path() << '\n';

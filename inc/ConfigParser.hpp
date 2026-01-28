@@ -26,7 +26,7 @@ class ConfigParser
 
 		void			parse_file(const char *arg);
 		ServerConfig	parse_server(std::ifstream &file);
-		LocationConfig	parse_location(std::ifstream &file, std::string header);
+		LocationConfig	parse_location(std::ifstream &file, std::string header, ServerConfig &server);
 };
 
 std::ostream &operator<<(std::ostream &out, const ConfigParser &conf);

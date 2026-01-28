@@ -76,31 +76,179 @@ void	Response::build_header(size_t body_size, std::string &path, bool connection
 		header["Connection"] = "close";
 }
 
-static LocationConfig	get_location(ServerConfig &server, Request &request)
-{
-	std::vector<LocationConfig>	server_locations = server.get_locations();
-	std::string		uri = request.get_uri();
-	int				location_index = 0;
-	int				cur_comp;
-	int				min_comp;
+// static std::string get_path_block(std::string &path, size_t block_nb)
+// {
+// 	std::string	block;
+// 	size_t		pos;
+// 	size_t		prev_pos = 0;
+// 	size_t		cur_block = 0;
+// 	bool		last_block = false;
 
-	min_comp = std::abs(uri.compare(server_locations[0].get_path()));
-	for (size_t i = 1; i < server_locations.size(); i++)
+// 	while (!last_block) 
+// 	{
+// 		pos = path.find('/', prev_pos);
+// 		if (pos == std::string::npos) 
+// 		{
+// 			pos = path.length();
+// 			last_block = true;
+// 		}
+// 		if (cur_block < block_nb)
+// 		{
+// 			prev_pos = pos;
+// 			cur_block++;
+// 			continue;
+// 		}
+// 		if (pos == std::string::npos) 
+// 		{
+// 			pos = path.length();
+// 			last_block = true;
+// 		}
+// 		block = path.substr(prev_pos, pos - prev_pos);
+// 		return (block);
+// 	}
+// }
+
+// static std::string	get_location_path(ServerConfig &server, Request &request)
+// {
+// 	std::vector<LocationConfig>::iterator	it;
+// 	std::vector<LocationConfig>	server_locations = server.get_locations();
+// 	std::vector<LocationConfig>	potential_locations;
+// 	std::string					uri = request.get_uri();
+// 	LocationConfig				longest_loc;
+// 	std::string					uri_block;
+// 	std::string					loc_block;
+// 	std::string					root;
+// 	std::string					index;
+// 	std::string 				path;
+// 	size_t						pos;
+// 	size_t						prev_pos = 0;
+// 	size_t						cur_block = 1;
+// 	size_t						loc_size = 0;
+// 	size_t						longest_loc_size = 0;
+
+// 	//uri = "/yo/yes/haha"
+// 	pos = uri.find('/');
+// 	for (size_t i = 0; i < server_locations.size(); i++)
+// 	{
+// 		if (uri.compare(0, 1, server_locations[i].get_path()) == 0 && server_locations[i].is_cgi() == false)
+// 			potential_locations.push_back(server_locations[i]);
+// 	}
+// 	prev_pos = pos;
+// 	while (true)
+// 	{
+// 		uri_block = get_path_block(uri, cur_block);
+// 		if (uri_block.empty())
+// 			break;
+// 		for (it = potential_locations.begin(); it != potential_locations.end(); it++)
+// 		{
+// 			std::string loc_path = it->get_path();
+// 			loc_block = get_path_block(loc_path, cur_block);
+// 			if (loc_block.empty())
+// 				continue;
+// 			if (uri_block.compare(loc_block) != 0)
+// 				it = potential_locations.erase(it);
+// 		}
+// 		cur_block++;
+// 	}
+
+// 	for (it = potential_locations.begin(); it != potential_locations.end(); it++)
+// 	{
+// 		loc_size = it->get_path().size();
+// 		if (loc_size > longest_loc_size)
+// 		{
+// 			longest_loc_size = loc_size;
+// 			longest_loc = *it;
+// 		}
+// 	}
+// 	root = longest_loc.get_root();
+// 	if (root.empty())
+// 		root = server.get_root();
+// 	index = longest_loc.get_index();
+// 	if (index.empty())
+// 		index = server.get_index();
+// 	path = root + index;
+// 	return (path); 
+// }
+
+static bool check_path_correspondance(std::vector<std::string> &uri_blocks, std::vector<std::string> &loc_blocks, size_t block_nb)
+{
+	for (size_t i = 0; i < block_nb; i++)
 	{
-		cur_comp = std::abs(uri.compare(server_locations[i].get_path()));
-		if (cur_comp < min_comp)
+		if (uri_blocks[i].compare(loc_blocks[i]) != 0)
+			return false;
+	}
+	return true;
+}
+
+static std::string	get_file_path(ServerConfig &server, Request &request)
+{
+	std::vector<LocationConfig>::iterator	it;
+	std::vector<LocationConfig>	server_locations = server.get_locations();
+	std::vector<LocationConfig>	potential_locations;
+	std::string					uri = request.get_uri();
+	std::string					buffer;
+	std::vector<std::string>	uri_blocks;
+	size_t						block_nb;
+	char						del = '/';
+	LocationConfig				longest_loc;
+	size_t						loc_size = 0;
+	size_t						longest_loc_size = 0;
+	std::string					root;
+	std::string					index;
+	std::string 				path;
+
+	std::stringstream 	ssu(uri);
+	while (getline(ssu, buffer, del))
+	{
+		if (!buffer.empty())
+			uri_blocks.push_back(buffer);
+	}
+	for (it = server_locations.begin(); it != server_locations.end(); it++)
+	{
+		std::stringstream 	ssl(it->get_path());
+		std::vector<std::string>	loc_blocks;
+		while (getline(ssl, buffer, del))
 		{
-			min_comp = cur_comp;
-			location_index = i;
+			if (!buffer.empty())
+				loc_blocks.push_back(buffer);
+		}
+		if (loc_blocks.size() > uri_blocks.size())
+			continue;
+		block_nb = loc_blocks.size();
+		if (check_path_correspondance(uri_blocks, loc_blocks, block_nb))
+			potential_locations.push_back(*it);
+	}
+	longest_loc = server.get_default_location();
+	for (it = potential_locations.begin(); it != potential_locations.end(); it++)
+	{
+		loc_size = it->get_path().size();
+		if (loc_size > longest_loc_size)
+		{
+			longest_loc_size = loc_size;
+			longest_loc = *it;
 		}
 	}
-	return (server_locations[location_index]);
+	root = longest_loc.get_root().empty() ? server.get_root() : longest_loc.get_root();
+    if (!root.empty() && root.back() != '/')
+		root += '/';
+	std::string loc_path = longest_loc.get_path();
+	std::string part_after_loc = uri.substr(loc_path.length());
+    if (part_after_loc.empty() || part_after_loc == "/") 
+    {
+        index = longest_loc.get_index().empty() ? server.get_index() : longest_loc.get_index();
+        path = root + index;
+    } 
+    else 
+    {
+        if (part_after_loc[0] == '/')
+            part_after_loc.erase(0, 1);
+        path = root + part_after_loc;
+    }
+	return (path); 
 }
 
 void	Response::build_response(ServerConfig &server, Request &request)
 {
-	//Check that host corresponds to server name
-	// if not host -> bad request
 	if (request.get_method() == "GET")
 		this->build_get_response(server, request);
 	if (request.get_method() == "POST")
@@ -127,8 +275,8 @@ void	Response::build_get_response(ServerConfig &server, Request &request)
 	LocationConfig	location;
 	byteVector		file;
 
-	location = get_location(server, request);
-	path = location.get_root() + location.get_index();
+	//Is_cgi ? -> launch cgi
+	path = get_file_path(server, request);
 	file = GetFile(path);
 	this->build_entry_line(200, "OK");
 	this->build_header(file.size(), path, true);

@@ -125,14 +125,22 @@ ServerConfig	ConfigParser::parse_server(std::ifstream &file)
 			server.set_client_mbs(ui_value);
 		}
 		else if (key == "location")
-			server.push_location(this->parse_location(file, line));
+			server.push_location(this->parse_location(file, line, server));
+	}
+	if (!server.is_default_set())
+	{
+		LocationConfig default_loc;
+		default_loc.set_root(server.get_root());
+		default_loc.set_index(server.get_index());
+		server.set_default_location(default_loc);
+		server.set_is_default_set(true);
 	}
 	if (!closing_brace)
 		throw ConfigException("Missing closing brace", this->_lineCount);
 	return (server);
 }
 
-LocationConfig	ConfigParser::parse_location(std::ifstream &file, std::string header)
+LocationConfig	ConfigParser::parse_location(std::ifstream &file, std::string header, ServerConfig &server)
 {
 	LocationConfig		location;
 	std::stringstream	ss(header);
@@ -148,6 +156,11 @@ LocationConfig	ConfigParser::parse_location(std::ifstream &file, std::string hea
 	if (!(ss >> s_value))
 		throw ConfigException("Invalid path value", this->_lineCount);
 	location.set_path(s_value);
+	if (s_value == "/")
+	{
+		server.set_default_location(location);
+		server.set_is_default_set(true);
+	}
 	while (std::getline(file, line)) 
 	{
 		this->_lineCount++;
@@ -212,7 +225,7 @@ LocationConfig	ConfigParser::parse_location(std::ifstream &file, std::string hea
 			has_path = true;
 		}
 	}
-	if (location.get_is_cgi() && (!has_ext || !has_path))
+	if (location.is_cgi() && (!has_ext || !has_path))
 		throw ConfigException("CGI configuration is incomplete: both 'cgi_ext' and 'cgi_path' are required", this->_lineCount);
 	if (!closing_brace)
 		throw ConfigException("Missing closing brace", this->_lineCount);

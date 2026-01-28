@@ -3,13 +3,15 @@
 
 ServerConfig::ServerConfig() 
 : _socket(-1),
- _listenPort(0),
+  _listenPort(0),
   _host(""),
   _serverName(""),
   _root(""),
   _index(""),
   _errorPage(""),
   _clientMaxBodySize(0),
+  _defaultLocation(),
+  _isDefaultSet(),
   _locations(0) {}
 
 ServerConfig::ServerConfig(const ServerConfig &rhs)
@@ -21,6 +23,8 @@ ServerConfig::ServerConfig(const ServerConfig &rhs)
   _index(rhs._index),
   _errorPage(rhs._errorPage),
   _clientMaxBodySize(rhs._clientMaxBodySize),
+  _defaultLocation(rhs._defaultLocation),
+  _isDefaultSet(rhs._isDefaultSet),
   _locations(rhs._locations) {}
 
 ServerConfig	&ServerConfig::operator=(const ServerConfig &rhs)
@@ -34,6 +38,8 @@ ServerConfig	&ServerConfig::operator=(const ServerConfig &rhs)
 		this->_index = rhs._index;
 		this->_errorPage = rhs._errorPage;
 		this->_clientMaxBodySize = rhs._clientMaxBodySize;
+		this->_isDefaultSet = rhs._isDefaultSet;
+		this->_defaultLocation = rhs._defaultLocation;
 		this->_locations = rhs._locations;
 	}
 	return (*this);
@@ -53,6 +59,8 @@ std::string					ServerConfig::get_root() const {return (this->_root);};
 std::string					ServerConfig::get_index() const {return (this->_index);};
 std::string					ServerConfig::get_error_page() const {return (this->_errorPage);};
 size_t						ServerConfig::get_client_max_body_size() const {return (this->_clientMaxBodySize);};
+LocationConfig				ServerConfig::get_default_location() const {return (this->_defaultLocation);};
+bool						ServerConfig::is_default_set() const {return (this->_isDefaultSet);};
 std::vector<LocationConfig>	ServerConfig::get_locations() const {return (this->_locations);};
 
 void	ServerConfig::set_socket(int value) {this->_socket = value;};
@@ -63,6 +71,8 @@ void	ServerConfig::set_root(std::string value) {this->_root = value;};
 void	ServerConfig::set_index(std::string value) {this->_index = value;};
 void	ServerConfig::set_error_page(std::string value) {this->_errorPage = value;};
 void	ServerConfig::set_client_mbs(size_t value) {this->_clientMaxBodySize = value;};
+void	ServerConfig::set_default_location(LocationConfig value) {this->_defaultLocation = value;};
+void	ServerConfig::set_is_default_set(bool value) {this->_isDefaultSet = value;};
 void	ServerConfig::push_location(LocationConfig value) {this->_locations.push_back(value);};
 
 std::ostream &operator<<(std::ostream &out, const ServerConfig &serv)
@@ -73,11 +83,13 @@ std::ostream &operator<<(std::ostream &out, const ServerConfig &serv)
 	<< "root: " << serv.get_root() << '\n'
 	<< "index: " << serv.get_index() << '\n'
 	<< "error_page: " << serv.get_error_page() << '\n'
-	<< "client_max_body_size: " << serv.get_client_max_body_size() << '\n';
+	<< "client_max_body_size: " << serv.get_client_max_body_size() << '\n'
+	<< "is default set:" << serv.is_default_set() << '\n'
+	<< "default location:\n" << serv.get_default_location() << '\n'
+	<< "locations:\n";
 	std::vector<LocationConfig>	locations = serv.get_locations();
 	for (size_t i = 0; i < locations.size(); i++)
 		out << locations[i];
 	out << '\n';
 	return (out);
 }
-

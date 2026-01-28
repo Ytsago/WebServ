@@ -14,6 +14,8 @@ class ServerConfig
 		std::string					_index;
 		std::string					_errorPage;
 		size_t						_clientMaxBodySize;
+		LocationConfig				_defaultLocation;
+		bool						_isDefaultSet;
 		std::vector<LocationConfig>	_locations;
 
 	public:
@@ -31,6 +33,8 @@ class ServerConfig
 		std::string					get_index() const;
 		std::string					get_error_page() const;
 		size_t						get_client_max_body_size() const;
+		LocationConfig				get_default_location() const;
+		bool						is_default_set() const;
 		std::vector<LocationConfig>	get_locations() const;
 
 		void	set_socket(int value);
@@ -41,6 +45,8 @@ class ServerConfig
 		void	set_index(std::string value);
 		void	set_error_page(std::string value);
 		void	set_client_mbs(size_t value);
+		void	set_default_location(LocationConfig value);
+		void	set_is_default_set(bool value);
 		void	push_location(LocationConfig value);
 };
 

@@ -24,15 +24,32 @@ void	fileReader() {
 	file.sputn(reinterpret_cast<char*>(data.data()), data.size());
 }
 
-int main(int ac, char* const av[]) {
-	std::ofstream	logs("logs.txt");
+// int main(int ac, char* const av[]) {
+// 	std::ofstream	logs("logs.txt");
 	
+// 	if (ac == 2)
+// 	{
+// 		try
+// 		{
+// 			WebServ server(std::cout, std::cerr);
+// 			server.run(av[1]);
+// 		}
+// 		catch (const std::exception& e) 
+// 		{
+// 			std::cout << e.what() << std::endl;
+// 			return (1);
+//     	}
+// 	}
+// }
+
+int main(int ac, char* const av[]) 
+{
 	if (ac == 2)
 	{
 		try
 		{
-			WebServ server(std::cout, std::cerr);
-			server.run(av[1]);
+			ConfigParser	parser(av[1]);
+			std::cout << parser;
 		}
 		catch (const std::exception& e) 
 		{
@@ -41,4 +58,3 @@ int main(int ac, char* const av[]) {
     	}
 	}
 }
-
