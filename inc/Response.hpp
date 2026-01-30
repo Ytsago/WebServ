@@ -22,7 +22,7 @@ class Response : public AMessage{
 		void	build_post_response(ServerConfig &server, Request &request);
 		void	build_delete_response(ServerConfig &server, Request &request);
 		void	build_entry_line(int code, std::string status);
-		void	build_header(size_t body_size, std::string &path, bool connection);
+		void	build_header(size_t body_size, std::string path, bool connection);
 	private:
 
 		

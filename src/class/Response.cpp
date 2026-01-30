@@ -54,121 +54,28 @@ static std::string	get_mime_type(std::string &path)
 static std::string	get_http_date()
 {
 	char 		buffer[100];
-    time_t 		current_time = time(0);
-    struct tm	*gm_time = gmtime(&current_time);
+	time_t 		current_time = time(0);
+	struct tm	*gm_time = gmtime(&current_time);
 
-    strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S GMT", gm_time);
-    return (std::string(buffer));
+	strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S GMT", gm_time);
+	return (std::string(buffer));
 }
 
-void	Response::build_header(size_t body_size, std::string &path, bool connection)
+void	Response::build_header(size_t body_size, std::string path, bool connection)
 {
 	std::map<std::string, std::string>	header;
 	std::string			str_size;
 
 	str_size = int_to_string(body_size);
 	header["Content-Length"] = str_size;
-	header["Content-Type"] = get_mime_type(path);
+	if (!path.empty())
+		header["Content-Type"] = get_mime_type(path);
 	header["Date"] = get_http_date();
 	if (connection)
 		header["Connection"] = "keep-alive";
 	else
 		header["Connection"] = "close";
 }
-
-// static std::string get_path_block(std::string &path, size_t block_nb)
-// {
-// 	std::string	block;
-// 	size_t		pos;
-// 	size_t		prev_pos = 0;
-// 	size_t		cur_block = 0;
-// 	bool		last_block = false;
-
-// 	while (!last_block) 
-// 	{
-// 		pos = path.find('/', prev_pos);
-// 		if (pos == std::string::npos) 
-// 		{
-// 			pos = path.length();
-// 			last_block = true;
-// 		}
-// 		if (cur_block < block_nb)
-// 		{
-// 			prev_pos = pos;
-// 			cur_block++;
-// 			continue;
-// 		}
-// 		if (pos == std::string::npos) 
-// 		{
-// 			pos = path.length();
-// 			last_block = true;
-// 		}
-// 		block = path.substr(prev_pos, pos - prev_pos);
-// 		return (block);
-// 	}
-// }
-
-// static std::string	get_location_path(ServerConfig &server, Request &request)
-// {
-// 	std::vector<LocationConfig>::iterator	it;
-// 	std::vector<LocationConfig>	server_locations = server.get_locations();
-// 	std::vector<LocationConfig>	potential_locations;
-// 	std::string					uri = request.get_uri();
-// 	LocationConfig				longest_loc;
-// 	std::string					uri_block;
-// 	std::string					loc_block;
-// 	std::string					root;
-// 	std::string					index;
-// 	std::string 				path;
-// 	size_t						pos;
-// 	size_t						prev_pos = 0;
-// 	size_t						cur_block = 1;
-// 	size_t						loc_size = 0;
-// 	size_t						longest_loc_size = 0;
-
-// 	//uri = "/yo/yes/haha"
-// 	pos = uri.find('/');
-// 	for (size_t i = 0; i < server_locations.size(); i++)
-// 	{
-// 		if (uri.compare(0, 1, server_locations[i].get_path()) == 0 && server_locations[i].is_cgi() == false)
-// 			potential_locations.push_back(server_locations[i]);
-// 	}
-// 	prev_pos = pos;
-// 	while (true)
-// 	{
-// 		uri_block = get_path_block(uri, cur_block);
-// 		if (uri_block.empty())
-// 			break;
-// 		for (it = potential_locations.begin(); it != potential_locations.end(); it++)
-// 		{
-// 			std::string loc_path = it->get_path();
-// 			loc_block = get_path_block(loc_path, cur_block);
-// 			if (loc_block.empty())
-// 				continue;
-// 			if (uri_block.compare(loc_block) != 0)
-// 				it = potential_locations.erase(it);
-// 		}
-// 		cur_block++;
-// 	}
-
-// 	for (it = potential_locations.begin(); it != potential_locations.end(); it++)
-// 	{
-// 		loc_size = it->get_path().size();
-// 		if (loc_size > longest_loc_size)
-// 		{
-// 			longest_loc_size = loc_size;
-// 			longest_loc = *it;
-// 		}
-// 	}
-// 	root = longest_loc.get_root();
-// 	if (root.empty())
-// 		root = server.get_root();
-// 	index = longest_loc.get_index();
-// 	if (index.empty())
-// 		index = server.get_index();
-// 	path = root + index;
-// 	return (path); 
-// }
 
 static bool check_path_correspondance(std::vector<std::string> &uri_blocks, std::vector<std::string> &loc_blocks, size_t block_nb)
 {
@@ -257,6 +164,48 @@ void	Response::build_response(ServerConfig &server, Request &request)
 		this->build_delete_response(server, request);
 }
 
+static LocationConfig	get_location(ServerConfig &server, Request &request)
+{
+	std::vector<LocationConfig>::iterator	it;
+	std::vector<LocationConfig>	server_locations = server.get_locations();
+	std::vector<LocationConfig>	potential_locations;
+	std::string					uri = request.get_uri();
+	std::string					buffer;
+	std::vector<std::string>	uri_blocks;
+	size_t						block_nb;
+	char						del = '/';
+	LocationConfig				longest_loc;
+	size_t						loc_size = 0;
+	size_t						longest_loc_size = 0;
+	std::string					root;
+	std::string					index;
+	std::string 				path;
+
+	std::stringstream 	ssu(uri);
+	while (getline(ssu, buffer, del))
+	{
+		if (!buffer.empty())
+			uri_blocks.push_back(buffer);
+	}
+	for (it = server_locations.begin(); it != server_locations.end(); it++)
+	{
+		std::stringstream 	ssl(it->get_path());
+		std::vector<std::string>	loc_blocks;
+		while (getline(ssl, buffer, del))
+		{
+			if (!buffer.empty())
+				loc_blocks.push_back(buffer);
+		}
+		if (loc_blocks.size() > uri_blocks.size())
+			continue;
+		block_nb = loc_blocks.size();
+		if (check_path_correspondance(uri_blocks, loc_blocks, block_nb))
+			potential_locations.push_back(*it);
+	}
+	longest_loc = server.get_default_location();
+	return (longest_loc); 
+}
+
 void	Response::build_get_response(ServerConfig &server, Request &request)
 {
 	/**
@@ -271,11 +220,14 @@ void	Response::build_get_response(ServerConfig &server, Request &request)
 	 * 			Connection: "keep-alive" or "close"
 	 * 	Body: data
 	**/
-	std::string		path;
-	LocationConfig	location;
-	byteVector		file;
+	std::string	path;
+	byteVector	file;
+	std::string	ext;
 
-	//Is_cgi ? -> launch cgi
+	if (get_cgi_ext(request, ext))
+	{
+		//execute cgi
+	}
 	path = get_file_path(server, request);
 	file = GetFile(path);
 	this->build_entry_line(200, "OK");
@@ -283,10 +235,88 @@ void	Response::build_get_response(ServerConfig &server, Request &request)
 	this->_body = file;
 }
 
+static bool	check_if_method_allowed(LocationConfig &location, std::string method)
+{
+	std::vector<std::string> 	allowed_methods = location.get_methods();
+
+	for (size_t i = 0; i < allowed_methods.size(); i++)
+	{
+		if (allowed_methods[i].compare(method) == 0)
+			return true;
+	}
+	return false;
+}
+
+static bool	get_cgi_ext(Request &request, std::string &ext)
+{
+	std::string	uri = request.get_uri();
+	size_t		dot_pos;
+	
+	dot_pos = uri.find_last_of('.');
+	if (dot_pos == std::string::npos)
+		return false;
+	else
+	{
+		ext = uri.substr(dot_pos);
+		return true;
+	}
+}
+
+static bool	get_upload_type(Request &request, std::string &content_type)
+{
+	std::string req_content_type = request.get_content_type();
+
+	if (req_content_type.compare("multipart/form-data") == 0)
+	{
+		content_type = "multipart/form-data";
+		return true;
+	}
+	if (req_content_type.compare("application/octet-stream") == 0)
+	{
+		content_type = "application/octet-stream";
+		return true;
+	}
+	return false;
+}
+
 void	Response::build_post_response(ServerConfig &server, Request &request)
 {
-	(void)server;
-	(void)request;
+	/**
+	 * Get location
+	 * Is POST allowed here ? 
+	 * 		-> No 405
+	 * Is this a CGI script? (Path/Extension check) 
+	 * 		-> Yes: Execute script → Pipe any body content to stdin → Return script's output.
+	 * Is this a "Static" Upload? (Check Content-Type)
+	 * 		-> Is it multipart/form-data? → Use your internal upload logic.
+	 *		-> Is it application/octet-stream? → Use your internal upload logic.
+	 * None of the above ?
+	 * 		-> 415
+	 */
+	LocationConfig	location;
+	std::string		ext;
+	std::string		content_type;
+
+	location = get_location(server, request);
+	
+	if (!check_if_method_allowed(location, "POST"))
+	{
+		this->build_entry_line(405, "Method Not Allowed");
+		this->build_header(0, "", true);
+	}
+	if (get_cgi_ext(request, ext))
+	{
+		//execute cgi
+	}
+	if (get_upload_type(request, content_type))
+	{
+		//upload file
+	}
+	else
+	{
+		this->build_entry_line(415, "Unsupported Media Type");
+		this->build_header(0, "", true);
+	}
 }
 
 void	Response::build_delete_response(ServerConfig &server, Request &request)
@@ -294,23 +324,6 @@ void	Response::build_delete_response(ServerConfig &server, Request &request)
 	(void)server;
 	(void)request;
 }
-
-// void	Response::build_response(ServerConfig &server, Request &request) {
-// 	byteVector	msg(_entryLine);
-
-// 	msg.insert(msg.end(), _body.begin(), _body.end() -1);
-// 	msg.insert(msg.end(), PAT, PAT + 4);
-// 	for (std::map<std::string, std::string>::const_iterator it = _headerField.begin(); it != _headerField.end(); it++) {
-// 		msg.insert(msg.end(), it->first.begin(), it->first.end() -1);
-// 		msg.push_back(':');
-// 		msg.insert(msg.end(), it->second.begin(), it->second.end() -1);
-// 		msg.insert(msg.end(), PAT, PAT + 4);
-// 	}
-// 	msg.insert(msg.end(), PAT, PAT + 4);
-// 	if (this->checkFlag(BODY))
-// 		msg.insert(msg.end(), _body.begin(), _body.end() -1);
-// 	setRaw(msg);
-// }
 
 Response::~Response() {
 }

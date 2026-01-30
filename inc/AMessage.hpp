@@ -15,6 +15,7 @@ class AMessage {
 		AMessage(const AMessage &other);				//Copy constructor
 		AMessage &operator=(const AMessage &other);	//Copy operator
 	
+		std::string	get_content_type();
 		// byteVector	buildMsg() const;
 
 		void	setFlag(byte flag);

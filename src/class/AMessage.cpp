@@ -34,6 +34,11 @@ AMessage	&AMessage::operator=(const AMessage &other) {
 	return (*this);
 }
 
+std::string	AMessage::get_content_type()
+{
+	return (this->_headerField["Content-Type"]);
+}
+
 void	AMessage::setFlag(byte flag) {flags |= flag;}
 const byte&	AMessage::getFlag() const {return flags;}
 bool	AMessage::checkFlag(byte flag) const {return (flags & flag) > 0;}
