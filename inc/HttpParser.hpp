@@ -62,8 +62,6 @@ class HttpParser {
 		bool	parseRequestLine();
 		bool	parseHeader();
 		bool	parseBody();
-		
-		static const std::string	SPECIFIC_KEYS[];
 };
 
 #endif

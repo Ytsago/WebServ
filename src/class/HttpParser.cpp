@@ -1,40 +1,6 @@
-#include <cctype>
-#include <iostream>
-#include <vector>
-#include <algorithm>
-#include <cstring>
 #include "HttpParser.hpp"
-
-class HttpRequest;
-
-const std::string	SPECIFIC_KEYS[] = {"transfer-encoding", "connection"}; //ADD here the key that will be lowered
-
-void	strLower(std::string& str) {
-	std::string::iterator	it = str.begin();
-
-	for (; it != str.end(); it++)
-		*it = tolower(*it);
-}
-
-bool	canBeLowered(const std::string& key) {
-	for (size_t i = 0; i < sizeof(SPECIFIC_KEYS) / sizeof(std::string); i++)
-		if (key == SPECIFIC_KEYS[i])
-			return true;
-	return false;
-}
-class HttpParser;
-
-
-const std::string&	HttpRequest::getMethod() const {return _method;}
-const std::string&	HttpRequest::getUri() const {return _uri;}
-const std::vector<std::pair<std::string, std::string> >& HttpRequest::getHeaders() const {return _header;}
-const std::vector<char>&	HttpRequest::getBody() const {return _body;}
-
-
-class Client {
-	public:
-	private:
-};
+#include <algorithm>
+#include "utils.hpp"
 
 HttpParser::HttpParser() : m_state(REQUEST_LINE), m_cursor(0) {
 	m_readBuf.reserve(8192);
@@ -68,7 +34,6 @@ void	HttpParser::consume(const char* data, size_t len) {
 		}
 	}
 }
-
 
 bool	HttpParser::parseRequestLine() {
 	std::vector<char>::iterator	itStart = m_readBuf.begin() + m_cursor;
@@ -217,13 +182,5 @@ HttpRequest*	HttpParser::generateRequest() {
 }
 
 HttpParser::~HttpParser() {
-
-}
-
-HttpRequest::~HttpRequest() {
-
-}
-
-HttpRequest::HttpRequest() {
 
 }

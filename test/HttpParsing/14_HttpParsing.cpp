@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cstring>
+#include <assert.h>
 #include "HttpRequest.hpp"
 #include "HttpParser.hpp"
 
