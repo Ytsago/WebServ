@@ -17,7 +17,7 @@ class ANetContainer {
 class Client : public ANetContainer {
 	public:
 		Client() : ANetContainer(), index(0) {};
-		virtual ~Client() 	{};
+		virtual ~Client();
 		bool is_client() {return (true);};
 		size_t	index;
 };
