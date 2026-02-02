@@ -6,12 +6,13 @@
 #include <vector>
 
 typedef unsigned char byte;
+typedef std::map<std::string, std::string> headerMap;
 typedef std::vector<char> byteVector;
 
 class AMessage {
 	public:
 		AMessage();										//Default constructor
-		~AMessage();										//Destructor
+		virtual ~AMessage();										//Destructor
 		AMessage(const AMessage &other);				//Copy constructor
 		AMessage &operator=(const AMessage &other);	//Copy operator
 	
@@ -19,14 +20,27 @@ class AMessage {
 		// byteVector	buildMsg() const;
 
 		void	setFlag(byte flag);
+		void	clearFlag(byte flag);
 		const byte&	getFlag() const;
 		bool	checkFlag(byte flag) const ;
+
 		bool	eof() const;
 		bool	fail() const;
 		void	clear();
 
 		byteVector& getRaw();
-		void	setRaw(byteVector data);
+		void	setRaw(const byteVector& data);
+		void	append(char* buffer, size_t size);
+
+		const headerMap&	getHeader() const;
+		const byteVector&	getBody() const;
+
+		static const byte	FLAG_EOF = 1 << 0;
+		static const byte	FLAG_FAIL = 1 << 1;
+		static const byte	FLAG_INPUT = 1 << 2;
+		static const byte	FLAG_ENTRY = 1 << 3;
+		static const byte	FLAG_HEADER = 1 << 4;
+		static const byte	FLAG_BODY = 1 << 5;
 	protected:
 		byteVector	_entryLine;
 		byteVector	_body;

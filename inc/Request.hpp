@@ -17,13 +17,20 @@ class Request : public AMessage {
 
 		bool	processMsg();
 
+		const std::string&	getMethode() const;
+		const std::string&	getUri() const;
+		const std::string&	getVersion() const;
+
 	private:
-		bool	processEntry();
-		bool	processHeader();
-		bool	processBody();
+		void	processEntry();
+		void	processHeader();
+		void	processBody();
 
 		std::string	_method;
 		std::string	_uri;
 		std::string	_version;
 };
+
+std::ostream&	operator<<(std::ostream& out, const Request& el);
+
 #endif

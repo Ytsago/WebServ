@@ -2,6 +2,7 @@
 
 #include <vector>
 #include "ANetContainer.hpp"
+#include "Client.hpp"
 
 //Recipient use to receive message from a client,
 //it my be usefull to make it a part of the client class
