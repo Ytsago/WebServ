@@ -43,13 +43,15 @@ class HttpParser {
 			int	e_status;
 		};
 
-		enum	ParserState {REQUEST_LINE, HEADER, BODY, CHUNKEDBODY, COMPLETE};
+		enum	ParserState {REQUEST_LINE, HEADER, PROCESSHEADER, BODY, CHUNKEDBODY, COMPLETE};
+		enum	MediaType {NONE, TEXT, APPLICATION, MULTIPART};
 
 	private:
 		HttpParser(const HttpParser& other);
 		HttpParser&	operator=(const HttpParser& other);
 
 		ParserState			m_state;
+		MediaType			m_type;
 		std::vector<char>	m_readBuf;
 		size_t	m_cursor;
 		size_t	m_contentLength;
@@ -58,10 +60,15 @@ class HttpParser {
 		std::string			m_path;
 		std::vector<std::pair<std::string, std::string> > m_header;
 		std::vector<char>	m_body;
+		std::string			m_boundary;
 
 		bool	parseRequestLine();
 		bool	parseHeader();
 		bool	parseBody();
+		bool	processHeader();
+		
+		MediaType	getMediaType(std::string& media);
+
 };
 
 #endif

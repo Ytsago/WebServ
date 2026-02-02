@@ -70,6 +70,49 @@ bool	HttpParser::parseRequestLine() {
 	return true;
 }
 
+HttpParser::MediaType	HttpParser::getMediaType(std::string& media) {
+	if (media == "text/plain") return TEXT;
+	if (media == "multipart/form-data") return MULTIPART;
+	if (media == "application/url_encoded") return APPLICATION;
+	throw HttpRequestParsingException(UNSUPORTED_MEDIA_TYPE);
+}
+
+bool	HttpParser::processHeader() {
+	std::string header;
+	if (!(header = getHeader("transfer-encoding")).empty()) {
+		if (header != "chunked")
+			throw HttpRequestParsingException(NOT_IMPLEMENTED);
+		m_state = CHUNKEDBODY;
+	}
+	else if (!(header = getHeader("content-length")).empty()) {
+		char*	endptr;
+		long	val;
+		val = std::strtol(header.c_str(), &endptr, 10);
+		if (*endptr != '\0' || val < 0 || val > MAX_BODY_SIZE)
+			throw HttpRequestParsingException(BAD_REQUEST);
+		m_contentLength = static_cast<size_t>(val);
+		if (m_contentLength > 0) {
+			m_state = BODY;
+			m_body.reserve(m_contentLength);
+		}
+	}
+	else
+		return false;
+	if (!(header = getHeader("content-type")).empty()) {
+		size_t	semiColon = header.find(';');
+		std::string	media = header.substr(0, semiColon);
+		strLower(media);
+		m_type = getMediaType(media);
+		switch (media) {
+			case MULTIPART: 
+				if (semiColon == std::string::npos)
+					throw HttpRequestParsingException(BAD_REQUEST);
+				size_t	boundIndex = media.find("boundary")
+		}
+	}
+	return true;
+}
+
 //TODO add check for host
 bool	HttpParser::parseHeader() {
 	std::vector<char>::iterator	itStart = m_readBuf.begin() + m_cursor;
@@ -80,27 +123,8 @@ bool	HttpParser::parseHeader() {
 
 	if (itEndLine == itStart) {
 		m_cursor += 2;
-		std::string cl;
-		if (!(cl = getHeader("transfer-encoding")).empty()) {
-			if (cl != "chunked")
-				throw HttpRequestParsingException(NOT_IMPLEMENTED);
-			m_state = CHUNKEDBODY;
-			return true;
-		}
-		else if (!(cl = getHeader("content-length")).empty()) {
-			char*	endptr;
-			long	val;
-			val = std::strtol(cl.c_str(), &endptr, 10);
-			if (*endptr != '\0' || val < 0 || val > MAX_BODY_SIZE)
-				throw HttpRequestParsingException(BAD_REQUEST);
-			m_contentLength = static_cast<size_t>(val);
-			if (m_contentLength > 0) {
-				m_state = BODY;
-				m_body.reserve(m_contentLength);
-				return true;
-			}
-		}
-		m_state = COMPLETE;
+		if (processHeader())
+			m_state = COMPLETE;
 		return true;
 	}
 
