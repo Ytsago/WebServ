@@ -1,4 +1,5 @@
 #include "Response.hpp"
+#include <unistd.h>
 
 // static const char PAT[4] = {'\r', '\n', '\r', '\n'};
 
@@ -87,7 +88,7 @@ static bool check_path_correspondance(std::vector<std::string> &uri_blocks, std:
 	return true;
 }
 
-static std::string	get_file_path(ServerConfig &server, Request &request)
+static LocationConfig	get_location(ServerConfig &server, Request &request)
 {
 	std::vector<LocationConfig>::iterator	it;
 	std::vector<LocationConfig>	server_locations = server.get_locations();
@@ -100,9 +101,6 @@ static std::string	get_file_path(ServerConfig &server, Request &request)
 	LocationConfig				longest_loc;
 	size_t						loc_size = 0;
 	size_t						longest_loc_size = 0;
-	std::string					root;
-	std::string					index;
-	std::string 				path;
 
 	std::stringstream 	ssu(uri);
 	while (getline(ssu, buffer, del))
@@ -135,14 +133,24 @@ static std::string	get_file_path(ServerConfig &server, Request &request)
 			longest_loc = *it;
 		}
 	}
-	root = longest_loc.get_root().empty() ? server.get_root() : longest_loc.get_root();
-    if (!root.empty() && root.back() != '/')
+	return (longest_loc); 
+}
+
+static std::string	get_file_path(ServerConfig &server, Request &request, LocationConfig &location)
+{
+	std::string					uri = request.get_uri();
+	std::string					root;
+	std::string					index;
+	std::string 				path;
+
+	root = location.get_root().empty() ? server.get_root() : location.get_root();
+    if (!root.empty() && root[root.size() - 1] != '/')
 		root += '/';
-	std::string loc_path = longest_loc.get_path();
+	std::string loc_path = location.get_path();
 	std::string part_after_loc = uri.substr(loc_path.length());
     if (part_after_loc.empty() || part_after_loc == "/") 
     {
-        index = longest_loc.get_index().empty() ? server.get_index() : longest_loc.get_index();
+        index = location.get_index().empty() ? server.get_index() : location.get_index();
         path = root + index;
     } 
     else 
@@ -164,53 +172,78 @@ void	Response::build_response(ServerConfig &server, Request &request)
 		this->build_delete_response(server, request);
 }
 
-static LocationConfig	get_location(ServerConfig &server, Request &request)
+static bool	get_cgi_ext(Request &request, std::string &ext)
 {
-	std::vector<LocationConfig>::iterator	it;
-	std::vector<LocationConfig>	server_locations = server.get_locations();
-	std::vector<LocationConfig>	potential_locations;
-	std::string					uri = request.get_uri();
-	std::string					buffer;
-	std::vector<std::string>	uri_blocks;
-	size_t						block_nb;
-	char						del = '/';
-	LocationConfig				longest_loc;
-	size_t						loc_size = 0;
-	size_t						longest_loc_size = 0;
-	std::string					root;
-	std::string					index;
-	std::string 				path;
+	std::string	uri = request.get_uri();
+	size_t		dot_pos;
+	
+	dot_pos = uri.find_last_of('.');
+	if (dot_pos == std::string::npos)
+		return false;
+	else
+	{
+		ext = uri.substr(dot_pos);
+		return true;
+	}
+}
 
-	std::stringstream 	ssu(uri);
-	while (getline(ssu, buffer, del))
+static void	dup_fd(int fd1, int fd2)
+{
+	if (dup2(fd1, fd2) == -1)
 	{
-		if (!buffer.empty())
-			uri_blocks.push_back(buffer);
+		//exception
 	}
-	for (it = server_locations.begin(); it != server_locations.end(); it++)
+}
+
+void	close_pipes(int *pipefd)
+{
+	int	i;
+
+	i = 0;
+	while (i < 4)
 	{
-		std::stringstream 	ssl(it->get_path());
-		std::vector<std::string>	loc_blocks;
-		while (getline(ssl, buffer, del))
+		close(pipefd[i]);
+		i++;
+	}
+}
+
+static void	execute_cgi(ServerConfig &server, Request &request, std::string &ext)
+{
+	int	pid;
+	int	pipefd[4];
+
+	for (int i = 0; i < 2; i++)
+	{
+		if (pipe(pipefd + i * 2) == -1)
 		{
-			if (!buffer.empty())
-				loc_blocks.push_back(buffer);
+			//exception
 		}
-		if (loc_blocks.size() > uri_blocks.size())
-			continue;
-		block_nb = loc_blocks.size();
-		if (check_path_correspondance(uri_blocks, loc_blocks, block_nb))
-			potential_locations.push_back(*it);
 	}
-	longest_loc = server.get_default_location();
-	return (longest_loc); 
+	//write in pipefd[0]
+	pid = fork();
+	if (pid == -1)
+	{
+		//exception
+	}
+	else if (pid == 0)
+	{
+		dup_fd(pipefd[1], STDIN_FILENO);
+		dup_fd(pipefd[3], STDOUT_FILENO);
+		close_pipes(pipefd);
+		(void)ext;
+		(void)request;
+		(void)server;
+		//execve
+	}
+	//read from pipefd[2]
+	close_pipes(pipefd);
 }
 
 void	Response::build_get_response(ServerConfig &server, Request &request)
 {
 	/**
 	 * Find corresponding location
-	 * Build header:
+	 * Build header: 
 	 * 		entry-line: "HTTP/1.1" + " " + "CODE" + " " + "STATUS" + "\r\n"
 	 * 		map:
 	 * 			Content-Length: body.size()
@@ -220,15 +253,17 @@ void	Response::build_get_response(ServerConfig &server, Request &request)
 	 * 			Connection: "keep-alive" or "close"
 	 * 	Body: data
 	**/
-	std::string	path;
-	byteVector	file;
-	std::string	ext;
+	std::string		path;
+	LocationConfig	location;
+	byteVector		file;
+	std::string		ext;
 
 	if (get_cgi_ext(request, ext))
 	{
-		//execute cgi
+		execute_cgi(server, request, ext);
 	}
-	path = get_file_path(server, request);
+	location = get_location(server, request);
+	path = get_file_path(server, request, location);
 	file = GetFile(path);
 	this->build_entry_line(200, "OK");
 	this->build_header(file.size(), path, true);
@@ -245,21 +280,6 @@ static bool	check_if_method_allowed(LocationConfig &location, std::string method
 			return true;
 	}
 	return false;
-}
-
-static bool	get_cgi_ext(Request &request, std::string &ext)
-{
-	std::string	uri = request.get_uri();
-	size_t		dot_pos;
-	
-	dot_pos = uri.find_last_of('.');
-	if (dot_pos == std::string::npos)
-		return false;
-	else
-	{
-		ext = uri.substr(dot_pos);
-		return true;
-	}
 }
 
 static bool	get_upload_type(Request &request, std::string &content_type)

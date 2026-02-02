@@ -21,7 +21,7 @@ CLASS = ConfigParser.cpp						LocationConfig.cpp			\
 		ServerConfig.cpp						WebServ.cpp					\
 		AMessage.cpp							Request.cpp					\
 		Server.cpp								Client.cpp					\
-		ANetContainer.cpp				
+		ANetContainer.cpp						Response.cpp
 
 INC = ConfigParser.hpp						LocationConfig.hpp			\
 	ServerConfig.hpp						ConfigException.hpp			\

@@ -17,10 +17,6 @@ class Request : public AMessage {
 
 		bool	processMsg();
 
-		const std::string&	getMethode() const;
-		const std::string&	getUri() const;
-		const std::string&	getVersion() const;
-
 	private:
 		void	processEntry();
 		void	processHeader();

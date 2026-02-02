@@ -2,7 +2,7 @@
 # define CLIENT_HPP
 
 # include "ANetContainer.hpp"
-// # include "Response.hpp"
+# include "Response.hpp"
 # include "Request.hpp"
 
 class Client : public ANetContainer {
@@ -19,8 +19,8 @@ class Client : public ANetContainer {
 	
 		void	setIndex(size_t newIndex);
 	private:
-		Request request;
-		// Response	respond;
+		Request 	request;
+		Response	response;
 
 		size_t	index;
 };

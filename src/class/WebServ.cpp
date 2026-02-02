@@ -114,7 +114,7 @@ void	WebServ::server_loop() {
 				Client* client = dynamic_cast<Client*>(incoming);
 				logs << "Sending a response." << std::endl;
 				//[TODO] Logic broken here
-				if (Sender::sendMsg(dynamic_cast<Client*>(incoming), GetFile(location + client->getRequest().getUri()))) {
+				if (Sender::sendMsg(dynamic_cast<Client*>(incoming), GetFile(location + client->getRequest().get_uri()))) {
 					epoll_ctl(_epollFd, EPOLL_CTL_DEL, incoming->getSocket(), 0);
 					delete(incoming);
 				}

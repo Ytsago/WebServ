@@ -130,26 +130,16 @@ bool	Request::processMsg() {
 	return 0;
 }
 
-
-const std::string&	Request::getMethode() const {
-	return _method;
-}
-
-const std::string&	Request::getUri() const {
-	return _uri;
-}
-
-const std::string&	Request::getVersion() const {
-	return _version;
-}
+std::string	Request::get_method() const {return _method;}
+std::string	Request::get_uri() const {return _uri;}
+std::string	Request::get_version() const {return _version;}
 
 Request::~Request() {
 }
 
-
 std::ostream&	operator<<(std::ostream& out, const Request& el) {
 	out << "Entry Line: \n";
-	out << el.getMethode() << " " << el.getUri() << " " << el.getVersion() << "\n";
+	out << el.get_method() << " " << el.get_uri() << " " << el.get_version() << "\n";
 
 	out << "\nHeader fields: \n";
 	for (headerMap::const_iterator it = el.getHeader().begin(); it != el.getHeader().end(); it++) {
