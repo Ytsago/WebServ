@@ -1,5 +1,7 @@
 #include "Response.hpp"
 #include <unistd.h>
+#include <algorithm>
+#include <sys/epoll.h>
 
 // static const char PAT[4] = {'\r', '\n', '\r', '\n'};
 
@@ -138,10 +140,10 @@ static LocationConfig	get_location(ServerConfig &server, Request &request)
 
 static std::string	get_file_path(ServerConfig &server, Request &request, LocationConfig &location)
 {
-	std::string					uri = request.get_uri();
-	std::string					root;
-	std::string					index;
-	std::string 				path;
+	std::string	uri = request.get_uri();
+	std::string	root;
+	std::string	index;
+	std::string path;
 
 	root = location.get_root().empty() ? server.get_root() : location.get_root();
     if (!root.empty() && root[root.size() - 1] != '/')
@@ -176,13 +178,15 @@ static bool	get_cgi_ext(Request &request, std::string &ext)
 {
 	std::string	uri = request.get_uri();
 	size_t		dot_pos;
+	size_t		query_pos;
 	
 	dot_pos = uri.find_last_of('.');
 	if (dot_pos == std::string::npos)
 		return false;
 	else
 	{
-		ext = uri.substr(dot_pos);
+		query_pos = uri.find(dot_pos, '?');
+		ext = (query_pos == std::string::npos) ? uri.substr(dot_pos) : uri.substr(dot_pos, query_pos - dot_pos);
 		return true;
 	}
 }
@@ -195,7 +199,7 @@ static void	dup_fd(int fd1, int fd2)
 	}
 }
 
-void	close_pipes(int *pipefd)
+static void	close_pipes(int *pipefd)
 {
 	int	i;
 
@@ -207,11 +211,82 @@ void	close_pipes(int *pipefd)
 	}
 }
 
-static void	execute_cgi(ServerConfig &server, Request &request, std::string &ext)
+static std::map<std::string, std::string> build_env(ServerConfig &server, Request &request, LocationConfig &location, std::string &path)
 {
-	int	pid;
-	int	pipefd[4];
+	std::map<std::string, std::string> env;
+	std::map<std::string, std::string> header = request.getHeader();
+	std::string	uri = request.get_uri();
+	std::string	query;
+	size_t		pos;
 
+	pos = uri.find('?');
+	query = (pos == std::string::npos) ? "" : uri.substr(pos + 1);
+	env["REQUEST_METHOD"] = request.get_method();
+	env["QUERY_STRING"] = query;
+	env["CONTENT_LENGTH"] = header["Content-Length"];
+	env["CONTENT_TYPE"] = header["Content-Type"];
+	env["PATH_INFO"] = uri;
+	env["PATH_TRANSLATED"] = path;
+	env["SCRIPT_NAME"] = location.get_index();
+	env["GATEWAY_INTERFACE"] = "CGI/1.1";
+	env["SERVER_PROTOCOL"] = "HTTP/1.1";
+	env["SERVER_NAME"] = server.get_server_name();
+	env["SERVER_PORT"] = server.get_listen_port();
+	return (env);
+}
+
+static void	clear_envp(char **envp)
+{
+	size_t	i = 0;
+
+	while (envp[i])
+	{
+		delete [] envp[i];
+		i++;
+	}
+	delete [] envp;
+}
+
+static char **map_to_envp(std::map<std::string, std::string> &env)
+{
+	char	**envp;
+	size_t	idx = 0;
+	size_t	field_size;
+	size_t	map_size = env.size();
+	std::map<std::string, std::string>::iterator it;
+
+	envp = new char*[map_size + 1];
+	for (size_t i = 0; i <= map_size; ++i)
+    	envp[i] = NULL;
+	try
+	{
+		for (it = env.begin(); it != env.end(); it++, idx++)
+		{
+			std::string entry = it->first + "=" + it->second;
+			char *field = new char[entry.size() + 1];
+			std::copy(entry.begin(), entry.end(), field);
+			field[entry.size()] = '\0';
+			envp[idx] = field;
+		}
+	}
+	catch(const std::exception& e)
+	{
+		clear_envp(envp);
+		throw;
+	}
+	return (envp);
+}
+
+static void	execute_cgi(ServerConfig &server, Request &request, LocationConfig &location, std::string &path)
+{
+	std::map<std::string, std::string> env;
+	std::vector<char>	body = request.getBody();
+	char	**envp;
+	int		pid;
+	int		pipefd[4];
+
+	env = build_env(server, request, location, path);
+	envp = map_to_envp(env);
 	for (int i = 0; i < 2; i++)
 	{
 		if (pipe(pipefd + i * 2) == -1)
@@ -219,7 +294,15 @@ static void	execute_cgi(ServerConfig &server, Request &request, std::string &ext
 			//exception
 		}
 	}
-	//write in pipefd[0]
+	/**
+	* epoll ctl pipefd[1] and pipefd[2] 
+	* -> refacto newconnection in a way that:
+	*		Object cgihandler inherits from ANetContainer
+	*		ev.data.ptr = cgihandler so when epoll wait gives us the fd we know that its a pipefd through ANetContainer::getType()
+	*		epoll ctl pipefd[1] on EPOLLOUT
+	*		epoll ctl pipefd[2] on EPOLLIN
+	*/
+	write(pipefd[1], &body[0], body.size());
 	pid = fork();
 	if (pid == -1)
 	{
@@ -227,15 +310,14 @@ static void	execute_cgi(ServerConfig &server, Request &request, std::string &ext
 	}
 	else if (pid == 0)
 	{
-		dup_fd(pipefd[1], STDIN_FILENO);
+		dup_fd(pipefd[0], STDIN_FILENO);
 		dup_fd(pipefd[3], STDOUT_FILENO);
 		close_pipes(pipefd);
-		(void)ext;
-		(void)request;
-		(void)server;
-		//execve
+		char **argv = new char*[2];
+		std::copy(path.begin(), path.end(), argv[0]);
+		argv[1] = NULL;
+		execve(path.c_str(), argv, envp);
 	}
-	//read from pipefd[2]
 	close_pipes(pipefd);
 }
 
@@ -258,12 +340,12 @@ void	Response::build_get_response(ServerConfig &server, Request &request)
 	byteVector		file;
 	std::string		ext;
 
-	if (get_cgi_ext(request, ext))
-	{
-		execute_cgi(server, request, ext);
-	}
 	location = get_location(server, request);
 	path = get_file_path(server, request, location);
+	if (get_cgi_ext(request, ext))
+	{
+		execute_cgi(server, request, location, path);
+	}
 	file = GetFile(path);
 	this->build_entry_line(200, "OK");
 	this->build_header(file.size(), path, true);
