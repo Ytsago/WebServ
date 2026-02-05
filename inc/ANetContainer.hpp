@@ -3,6 +3,13 @@
 
 #include <iostream>
 
+enum e_container_type
+{
+	CLIENT,
+	SERVER,
+	CGI
+};
+
 class ANetContainer {
 	public:
 		ANetContainer();										//Default constructor
@@ -11,7 +18,7 @@ class ANetContainer {
 		ANetContainer(const ANetContainer &other);				//Copy constructor
 		ANetContainer &operator=(const ANetContainer &other);	//Copy operator
 	
-		virtual bool	isClient() const = 0;
+		virtual int	get_type() const = 0;
 
 		int		getSocket() const;
 		void	setSocket(const int& socket);

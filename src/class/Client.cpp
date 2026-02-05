@@ -7,10 +7,12 @@ Client::Client() : ANetContainer(), index(0) {
 Client::Client(std::ostream& logs, std::ostream& errLogs) : ANetContainer(logs, errLogs), index(0) {
 }
 
-Client::Client(const Client &other) : ANetContainer(other), request(other.request), response(other.response), index(other.index) {}
+Client::Client(const Client &other) : ANetContainer(other), request(other.request), 
+// response(other.response), 
+index(other.index) {}
 
-bool	Client::isClient() const {
-	return true;
+int	Client::get_type() const {
+	return (CLIENT);
 }
 
 Client	&Client::operator=(const Client &other) {
@@ -18,7 +20,7 @@ Client	&Client::operator=(const Client &other) {
 		this->::ANetContainer::operator=(other);
 		this->index = other.index;
 		this->request = other.request;
-		this->response = other.response;
+		// this->response = other.response;
 	}
 	return (*this);
 }

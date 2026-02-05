@@ -17,18 +17,24 @@ OBJDIR = .Obj/
 
 MAIN =	main.cpp							utils.cpp		
 
-CLASS = ConfigParser.cpp						LocationConfig.cpp			\
-		ServerConfig.cpp						WebServ.cpp					\
-		AMessage.cpp							Request.cpp					\
-		Server.cpp								Client.cpp					\
-		ANetContainer.cpp						Response.cpp
+CLASS = ConfigParser.cpp					LocationConfig.cpp			\
+		ServerConfig.cpp					WebServ.cpp					\
+		AMessage.cpp						Request.cpp					\
+		Server.cpp							Client.cpp					\
+		ANetContainer.cpp					Response.cpp				\
+		CgiHandler.cpp						RequestHandler.cpp			\
+		FileHandler.cpp						CgiContainer.cpp			\
+		StatusCode.cpp						HttpRequest.cpp
 
 INC = ConfigParser.hpp						LocationConfig.hpp			\
 	ServerConfig.hpp						ConfigException.hpp			\
 	WebServ.hpp								AMessage.hpp				\
 	ANetContainer							Recipient.hpp				\
 	Request.hpp								Client.hpp					\
-	Server.hpp								Response.hpp
+	Server.hpp								Response.hpp				\
+	CgiHandler.hpp							RequestHandler.hpp			\
+	FileHandler.hpp							CgiContainer.hpp			\
+	StatusCode.hpp							HttpRequest.hpp
 
 # -----------SRCS-----------#
 

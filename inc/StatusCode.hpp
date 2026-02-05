@@ -1,0 +1,26 @@
+#pragma once
+
+#include <map>
+#include <iostream>
+
+enum	e_status_code {
+	OK = 200,
+	NOT_MODIFIED = 304,
+	BAD_REQUEST = 400,
+	FORBIDDEN = 403,
+	NOT_FOUND = 404,
+	METHOD_NOT_ALLOWED = 405,
+	LENGHT_REQUIRED = 411,
+	CONTENT_TOO_LARGE = 413,
+	URI_TOO_LONG = 414,
+	UNSUPORTED_MEDIA_TYPE = 415,
+	TOO_MANY_REQUEST = 429,
+	REQUEST_HEADER_FIELD_TOO_LARGE = 431,
+	INTERNAL_SERVER_ERROR = 500,
+	NOT_IMPLEMENTED = 501,
+	HTTP_VERSION_NOT_SUPPORTED = 505
+};
+
+extern std::map<int, std::string> g_status_map;
+
+void	init_status_map();

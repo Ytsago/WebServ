@@ -1,0 +1,153 @@
+#include "CgiHandler.hpp"
+#include "CgiContainer.hpp"
+#include <sys/epoll.h>
+#include <unistd.h>
+
+CgiHandler::CgiHandler() {}
+
+CgiHandler::CgiHandler(const CgiHandler &other) 
+{
+	(void)other;
+}
+
+CgiHandler	&CgiHandler::operator=(const CgiHandler &other) 
+{
+	(void)other;
+	return (*this);
+}
+
+CgiHandler::~CgiHandler() {
+}
+
+static void	dup_fd(int fd1, int fd2)
+{
+	if (dup2(fd1, fd2) == -1)
+	{
+		//exception
+	}
+}
+
+static void	close_pipes(int *pipefd)
+{
+	int	i;
+
+	i = 0;
+	while (i < 4)
+	{
+		close(pipefd[i]);
+		i++;
+	}
+}
+
+static std::map<std::string, std::string> build_env(ServerConfig &server, HttpRequest &request, LocationConfig &location, std::string &path)
+{
+	std::map<std::string, std::string> env;
+	std::string	uri = request.getUri();
+	std::string	query;
+	size_t		pos;
+
+	pos = uri.find('?');
+	query = (pos == std::string::npos) ? "" : uri.substr(pos + 1);
+	env["REQUEST_METHOD"] = request.getMethod();
+	env["QUERY_STRING"] = query;
+	env["CONTENT_LENGTH"] = request.getHeader("Content-Length");
+	env["CONTENT_TYPE"] = request.getHeader("Content-Type");
+	env["PATH_INFO"] = uri;
+	env["PATH_TRANSLATED"] = path;
+	env["SCRIPT_NAME"] = location.get_index();
+	env["GATEWAY_INTERFACE"] = "CGI/1.1";
+	env["SERVER_PROTOCOL"] = "HTTP/1.1";
+	env["SERVER_NAME"] = server.get_server_name();
+	env["SERVER_PORT"] = server.get_listen_port();
+	return (env);
+}
+
+static void	clear_envp(char **envp)
+{
+	size_t	i = 0;
+
+	while (envp[i])
+	{
+		delete [] envp[i];
+		i++;
+	}
+	delete [] envp;
+}
+
+static char **map_to_envp(std::map<std::string, std::string> &env)
+{
+	char	**envp;
+	size_t	idx = 0;
+	size_t	map_size = env.size();
+	std::map<std::string, std::string>::iterator it;
+
+	envp = new char*[map_size + 1];
+	for (size_t i = 0; i <= map_size; ++i)
+    	envp[i] = NULL;
+	try
+	{
+		for (it = env.begin(); it != env.end(); it++, idx++)
+		{
+			std::string entry = it->first + "=" + it->second;
+			char *field = new char[entry.size() + 1];
+			std::copy(entry.begin(), entry.end(), field);
+			field[entry.size()] = '\0';
+			envp[idx] = field;
+		}
+	}
+	catch(const std::exception& e)
+	{
+		clear_envp(envp);
+		throw;
+	}
+	return (envp);
+}
+
+void	CgiHandler::execute_cgi(ServerConfig &server, HttpRequest &request, LocationConfig &location, std::string &path, int &epollFd)
+{
+	std::map<std::string, std::string> env;
+	std::vector<char>	body = request.getBody();
+	char	**envp;
+	int		pid;
+	int		pipefd[4];
+
+	env = build_env(server, request, location, path);
+	envp = map_to_envp(env);
+	for (int i = 0; i < 2; i++)
+	{
+		if (pipe(pipefd + i * 2) == -1)
+		{
+			//exception
+		}
+	}
+	/**
+	* epoll ctl pipefd[1] and pipefd[2] 
+	* -> refacto newconnection in a way that:
+	*		Object cgihandler inherits from ANetContainer
+	*		ev.data.ptr = cgihandler so when epoll wait gives us the fd we know that its a pipefd through ANetContainer::getType()
+	*		epoll ctl pipefd[1] on EPOLLOUT
+	*		epoll ctl pipefd[2] on EPOLLIN
+	*/
+	ANetContainer	*newCgi = new CgiContainer;
+	add_to_epoll(epollFd, pipefd[1], EPOLLOUT, newCgi);
+	add_to_epoll(epollFd, pipefd[2], EPOLLIN, newCgi);
+	pid = fork();
+	if (pid == -1)
+	{
+		//exception
+	}
+	else if (pid == 0)
+	{
+		dup_fd(pipefd[0], STDIN_FILENO);
+		dup_fd(pipefd[3], STDOUT_FILENO);
+		close_pipes(pipefd);
+		char **argv = new char*[2];
+		std::copy(path.begin(), path.end(), argv[0]);
+		argv[1] = NULL;
+		execve(path.c_str(), argv, envp);
+		clear_envp(envp);
+	}
+	close_pipes(pipefd);
+}
+
+

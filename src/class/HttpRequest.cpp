@@ -22,6 +22,15 @@ HttpRequest&	HttpRequest::operator=(const HttpRequest& other) {
 	return *this;
 }
 
+std::string	HttpRequest::getHeader(const std::string& key) const 
+{
+	for (size_t i = 0; i < this->_header.size(); i++) {
+		if (this->_header[i].first == key)
+			return this->_header[i].second;
+	}
+	return "";
+}
+
 const std::string&	HttpRequest::getMethod() const {return _method;}
 const std::string&	HttpRequest::getUri() const {return _uri;}
 const std::vector<std::pair<std::string, std::string> >& HttpRequest::getHeaders() const {return _header;}

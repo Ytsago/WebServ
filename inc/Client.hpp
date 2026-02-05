@@ -13,14 +13,14 @@ class Client : public ANetContainer {
 		Client(const Client &other);				//Copy constructor
 		Client &operator=(const Client &other);	//Copy operator
 
-		bool	isClient() const;
+		int			get_type() const;
 		Request&	getRequest();
 		const size_t&	getIndex() const;
 	
 		void	setIndex(size_t newIndex);
 	private:
 		Request 	request;
-		Response	response;
+		// Response	response;
 
 		size_t	index;
 };

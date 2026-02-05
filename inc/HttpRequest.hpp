@@ -6,6 +6,8 @@
 
 class HttpParser;
 
+typedef std::vector<char> byteVector;
+
 class HttpRequest {
 	public:
 		HttpRequest();
@@ -17,6 +19,7 @@ class HttpRequest {
 		const std::string&	getUri() const;
 		const std::vector<std::pair<std::string, std::string> >& getHeaders() const;
 		const std::vector<char>&	getBody() const;
+		std::string			getHeader(const std::string& key) const;
 
 	private:
 		std::string	_method;

@@ -11,7 +11,7 @@ class Server : public ANetContainer {
 		Server(const Server &other);				//Copy constructor
 		Server &operator=(const Server &other);	//Copy operator
 	
-		bool	isClient() const;
+		int		get_type() const;
 	private:
 
 };

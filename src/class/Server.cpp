@@ -9,8 +9,8 @@ Server::Server(std::ostream& logs, std::ostream& errLogs) : ANetContainer(logs, 
 Server::Server(const Server &other) : ANetContainer(other) {
 }
 
-bool	Server::isClient() const {
-	return false;
+int	Server::get_type() const {
+	return (SERVER);
 }
 
 Server	&Server::operator=(const Server &other) {

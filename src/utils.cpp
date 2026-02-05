@@ -3,7 +3,12 @@
 #include <string>
 #include <fcntl.h>
 #include <sstream>
+#include <sys/socket.h>
+#include <sys/epoll.h>
+#include <netinet/in.h>
+
 #include "AMessage.hpp"
+#include "ANetContainer.hpp"
 
 byteVector	GetFile(std::string path) {
 	//Open file at the end ("ate")
@@ -46,4 +51,14 @@ bool	canBeLowered(const std::string& key) {
 		if (key == SPECIFIC_KEYS[i])
 			return true;
 	return false;
+}
+
+bool	add_to_epoll(int epollFd, int fd, int event, ANetContainer *container)
+{
+	struct epoll_event ev;
+    ev.events = event;
+    ev.data.ptr = container;
+    if (epoll_ctl(epollFd, EPOLL_CTL_ADD, fd, &ev) == -1)
+		return false;
+   	return true;
 }

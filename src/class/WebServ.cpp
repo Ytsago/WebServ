@@ -47,17 +47,15 @@ bool	WebServ::newConnection(struct epoll_event& ev, int serverFd) const  {
    	int clientFd = accept(serverFd, (struct sockaddr*) &clientAddr, &dummyLen);
    	if (clientFd == -1)
    		return 1;
-
+	(void)ev;
+	//-> utility of ev ? do we need to initialize it in the server loop or is it sufficient in add_to_epoll ?
    	ANetContainer *newClient = new Client;
-
-   	newClient->setSocket(clientFd);
-	ev.events = EPOLLIN;
-   	ev.data.ptr =  newClient;
-
-   	logs << "[LOGS] New connection on " << clientFd << std::endl;
-   	epoll_ctl(this->_epollFd, EPOLL_CTL_ADD, clientFd, &ev);
-
-   	return 0;
+	if (add_to_epoll(this->_epollFd, clientFd, EPOLLIN, newClient))
+	{
+   		logs << "[LOGS] New connection on " << clientFd << std::endl;
+		return true;
+	}
+	return false;
 }
 
 //[TODO] Move to his own class.
@@ -93,7 +91,7 @@ void	WebServ::server_loop() {
 		int nfds = epoll_wait(_epollFd, events, MAXEVENT, TIMEOUT);
 		for (int i = 0; i < nfds; i++) {
 			ANetContainer* incoming = reinterpret_cast<ANetContainer*>(events[i].data.ptr);
-			if (!incoming->isClient()) {
+			if (incoming->get_type() != CLIENT) {
 				while (!newConnection(ev, incoming->getSocket()));
 				logs << "[LOGS] Connection added !" << std::endl;
 			}
@@ -101,9 +99,11 @@ void	WebServ::server_loop() {
 				Client* client = dynamic_cast<Client*>(incoming);
 				logs << "[LOGS] Recieving a msg from client " << incoming->getSocket() << std::endl;
 				Recipient::getMsg(dynamic_cast<Client*>(incoming));
-
+				
 				// logs << "[DEBUG] Message received :\n" << incoming->msg.data() << '\0' << std::endl;
 				if (client->getRequest().eof()) {
+					//RequestHandler requestHandler(serverConfig, httpRequest, epollFd);
+					//requestHandler.handle_request();
 					logs << "[LOGS] Message: \n" << client->getRequest() << std::endl;
 					ev.events = EPOLLOUT;
 					ev.data.ptr = incoming;			
