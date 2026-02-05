@@ -9,6 +9,7 @@ OBJDIR	= .Obj/
 SRCS	= $(wildcard $(SRCDIR)*.cpp) \
 		  $(FUNCDIR)class/HttpParser.cpp \
 		  $(FUNCDIR)class/HttpRequest.cpp \
+		  $(FUNCDIR)class/HeaderMap.cpp \
 		  $(FUNCDIR)utils.cpp \
 		  main.cpp
 
