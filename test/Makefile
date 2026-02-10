@@ -27,7 +27,7 @@ $(OBJDIR)%.o: | $(OBJDIR)
 $(OBJDIR):
 	mkdir -p $(OBJDIR)
 
-run: all
+run: re
 	./$(NAME)
 
 clean:

@@ -2,6 +2,7 @@
 #define HTTPREQUEST_HPP
 
 #include <vector>
+#include "HeaderMap.hpp"
 #include <iostream>
 
 class HttpParser;
@@ -15,13 +16,14 @@ class HttpRequest {
 
 		const std::string&	getMethod() const;
 		const std::string&	getUri() const;
-		const std::vector<std::pair<std::string, std::string> >& getHeaders() const;
+		const HeaderMap& getHeaders() const;
 		const std::vector<char>&	getBody() const;
 
 	private:
 		std::string	_method;
 		std::string	_uri;
-		std::vector<std::pair<std::string, std::string> >	_header;
+		HeaderMap	_header;
+		// std::vector<std::pair<std::string, std::string> >	_header;
 		std::vector<char> _body;
 		size_t	_contentLength;
 	friend class HttpParser;

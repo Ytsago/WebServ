@@ -15,3 +15,11 @@ bool	canBeLowered(const std::string& key) {
 			return true;
 	return false;
 }
+
+void	trim(std::string& str) {
+	str.erase(0, str.find_first_not_of(" \t"));
+	size_t	last = str.find_last_not_of(" \t");
+
+	if (last != std::string::npos)
+		str.erase(last + 1);
+}
