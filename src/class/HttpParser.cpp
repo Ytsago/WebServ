@@ -1,4 +1,5 @@
 #include "HttpParser.hpp"
+#include "StatusCode.hpp"
 #include <algorithm>
 #include "utils.hpp"
 

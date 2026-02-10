@@ -113,6 +113,7 @@ std::string	RequestHandler::get_file_path()
             part_after_loc.erase(0, 1);
         path = root + part_after_loc;
     }
+	std::cout << path << '\n';
 	return (path); 
 }
 
@@ -128,7 +129,10 @@ bool	RequestHandler::get_cgi_ext(std::string &ext)
 	else
 	{
 		query_pos = uri.find(dot_pos, '?');
+		// query_pos = uri.find('?', dot_pos);
 		ext = (query_pos == std::string::npos) ? uri.substr(dot_pos) : uri.substr(dot_pos, query_pos - dot_pos);
+		std::cout << query_pos << '\n';
+		std::cout << ext << '\n';
 		return true;
 	}
 }
@@ -196,10 +200,10 @@ void	RequestHandler::build_post_response()
 	 * Is POST allowed here ? 
 	 * 		-> No 405
 	 * Is this a CGI script? (Path/Extension check) 
-	 * 		-> Yes: Execute script → Pipe any body content to stdin → Return script's output.
+	 * 		-> Yes: Execute script -> Pipe any body content to stdin -> Return script's output.
 	 * Is this a "Static" Upload? (Check Content-Type)
-	 * 		-> Is it multipart/form-data? → Use your internal upload logic.
-	 *		-> Is it application/octet-stream? → Use your internal upload logic.
+	 * 		-> Is it multipart/form-data? -> Use internal upload logic.
+	 *		-> Is it application/octet-stream? -> Use internal upload logic.
 	 * None of the above ?
 	 * 		-> 415 
 	 */

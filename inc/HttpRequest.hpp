@@ -28,6 +28,7 @@ class HttpRequest {
 		std::vector<char> _body;
 		size_t	_contentLength;
 	friend class HttpParser;
+	friend class RequestHandlerTester;
 };
 
 #endif

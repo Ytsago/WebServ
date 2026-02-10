@@ -123,8 +123,8 @@ void	CgiHandler::execute_cgi(ServerConfig &server, HttpRequest &request, Locatio
 	/**
 	* epoll ctl pipefd[1] and pipefd[2] 
 	* -> refacto newconnection in a way that:
-	*		Object cgihandler inherits from ANetContainer
-	*		ev.data.ptr = cgihandler so when epoll wait gives us the fd we know that its a pipefd through ANetContainer::getType()
+	*		Object cgicontainer inherits from ANetContainer
+	*		ev.data.ptr = cgicontainer so when epoll wait gives us the fd we know that its a pipefd through ANetContainer::getType()
 	*		epoll ctl pipefd[1] on EPOLLOUT
 	*		epoll ctl pipefd[2] on EPOLLIN
 	*/
