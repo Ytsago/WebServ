@@ -90,6 +90,23 @@ void	RequestHandler::find_corresponding_location()
 	} 
 }
 
+bool	RequestHandler::get_cgi_ext(std::string &ext)
+{
+	std::string	uri = this->_request.getUri();
+	size_t		dot_pos;
+	size_t		query_pos;
+	
+	dot_pos = uri.find_last_of('.');
+	if (dot_pos == std::string::npos)
+		return false;
+	else
+	{
+		query_pos = uri.find('?', dot_pos);
+		ext = (query_pos == std::string::npos) ? uri.substr(dot_pos) : uri.substr(dot_pos, query_pos - dot_pos);
+		return true;
+	}
+}
+
 std::string	RequestHandler::get_file_path()
 {
 	std::string	uri = this->_request.getUri();
@@ -113,28 +130,7 @@ std::string	RequestHandler::get_file_path()
             part_after_loc.erase(0, 1);
         path = root + part_after_loc;
     }
-	std::cout << path << '\n';
 	return (path); 
-}
-
-bool	RequestHandler::get_cgi_ext(std::string &ext)
-{
-	std::string	uri = this->_request.getUri();
-	size_t		dot_pos;
-	size_t		query_pos;
-	
-	dot_pos = uri.find_last_of('.');
-	if (dot_pos == std::string::npos)
-		return false;
-	else
-	{
-		query_pos = uri.find(dot_pos, '?');
-		// query_pos = uri.find('?', dot_pos);
-		ext = (query_pos == std::string::npos) ? uri.substr(dot_pos) : uri.substr(dot_pos, query_pos - dot_pos);
-		std::cout << query_pos << '\n';
-		std::cout << ext << '\n';
-		return true;
-	}
 }
 
 void	RequestHandler::build_get_response()

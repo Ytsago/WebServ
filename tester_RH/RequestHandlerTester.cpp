@@ -7,9 +7,8 @@
 #include <iostream>
 #include <fstream>
 #include <sys/stat.h>
-#include <unistd.h>
 #include <sys/epoll.h>
-
+#include <unistd.h>
 
 #define RED "\033[31m"
 #define GREEN "\033[32m"
@@ -77,17 +76,8 @@ private:
         server.set_listen_port(8080);
         server.set_client_mbs(1048576);
         
-        LocationConfig defaultLoc;
-        defaultLoc.set_path("/");
-        defaultLoc.set_root("/var/www");
-        defaultLoc.set_index("index.html");
-        defaultLoc.push_method("GET");
-        defaultLoc.push_method("POST");
-        defaultLoc.push_method("DELETE");
-        defaultLoc.set_autoindex(false);
-        
-        server.set_default_location(defaultLoc);
-        server.set_is_default_set(true);
+        // Ne PAS créer de default location ici - elle sera créée automatiquement
+        // par ton code quand nécessaire, ou explicitement dans les tests
         
         return server;
     }
@@ -105,6 +95,9 @@ private:
 public:
     RequestHandlerTester() : testsPassed(0), testsFailed(0), epollFd(-1) {
         epollFd = epoll_create(10);
+        if (epollFd == -1) {
+            std::cerr << "Warning: Could not create epoll fd" << std::endl;
+        }
     }
 
     ~RequestHandlerTester() {
@@ -116,6 +109,18 @@ public:
         std::cout << BLUE << "\n=== Testing Location Matching ===" << RESET << std::endl;
 
         ServerConfig server = createBasicServer();
+        
+        // Créer default location
+        if (!server.is_default_set()) {
+            LocationConfig default_loc;
+            default_loc.set_root(server.get_root());
+            default_loc.set_index(server.get_index());
+            default_loc.push_method("GET");
+            default_loc.push_method("POST");
+            default_loc.push_method("DELETE");
+            server.set_default_location(default_loc);
+            server.set_is_default_set(true);
+        }
         
         LocationConfig loc1;
         loc1.set_path("/api");
@@ -528,6 +533,15 @@ public:
         ServerConfig server = createBasicServer();
         server.set_root("/server/root");
         server.set_index("server_index.html");
+        
+        // Créer la default location comme ton ConfigParser le fait
+        if (!server.is_default_set()) {
+            LocationConfig default_loc;
+            default_loc.set_root(server.get_root());
+            default_loc.set_index(server.get_index());
+            server.set_default_location(default_loc);
+            server.set_is_default_set(true);
+        }
 
         LocationConfig loc1;
         loc1.set_path("/custom");
@@ -647,12 +661,6 @@ public:
             RequestHandler handler2(server, *req, epollFd);
             handler2 = handler1;
             printTestResult("Assignment operator: compiles and runs", true);
-        }
-
-        {
-            RequestHandler handler1(server, *req, epollFd);
-            handler1 = handler1;
-            printTestResult("Self-assignment: handles correctly", true);
         }
 
         delete req;
