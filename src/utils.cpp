@@ -20,8 +20,8 @@ byteVector	GetFile(std::string path) {
 	//Return to the start
 	file.seekg(std::ios::beg);
 
-	byteVector	buffer;
-	if (file.read(buffer.data() + 16, size)) {
+	byteVector	buffer(size);
+	if (file.read(buffer.data(), size)) {
 		return buffer;
 	}
 	return byteVector();

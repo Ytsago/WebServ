@@ -1,5 +1,6 @@
 #include "WebServ.hpp"
 #include "ConfigParser.hpp"
+#include "RequestHandler.hpp"
 #include <sys/socket.h>
 #include <sys/epoll.h>
 #include <netinet/in.h>
@@ -23,14 +24,14 @@ void	sigHandler(int sig) {
 		running = 0;
 }
 
-WebServ::WebServ() : _epollFd(-1), logs(std::cout), errorLogs(std::cerr) {
+// WebServ::WebServ() : _epollFd(-1), logs(std::cout), errorLogs(std::cerr), global_conf() {
+// }
+
+WebServ::WebServ(std::ostream& logStream, std::ostream& errorStream, ConfigParser &parser) : _epollFd(-1), logs(logStream), errorLogs(errorStream), global_conf(parser)  {
+
 }
 
-WebServ::WebServ(std::ostream& logStream, std::ostream& errorStream) : _epollFd(-1), logs(logStream), errorLogs(errorStream)  {
-
-}
-
-WebServ::WebServ(const WebServ &other) : _epollFd(other._epollFd), logs(other.logs), errorLogs(other.errorLogs) {
+WebServ::WebServ(const WebServ &other) : _epollFd(other._epollFd), logs(other.logs), errorLogs(other.errorLogs), global_conf(other.global_conf) {
 }
 
 WebServ	&WebServ::operator=(const WebServ &other) {
@@ -50,6 +51,7 @@ bool	WebServ::newConnection(struct epoll_event& ev, int serverFd) const  {
 	(void)ev;
 	//-> utility of ev ? do we need to initialize it in the server loop or is it sufficient in add_to_epoll ?
    	ANetContainer *newClient = new Client;
+	newClient->setSocket(clientFd);
 	if (add_to_epoll(this->_epollFd, clientFd, EPOLLIN, newClient))
 	{
    		logs << "[LOGS] New connection on " << clientFd << std::endl;
@@ -64,16 +66,24 @@ void Recipient::getMsg(Client* client) {
 	int		bytes;
 
 	bytes = recv(client->getSocket(), buffer, BUFFSIZE, MSG_DONTWAIT);
-	client->getRequest().append(buffer, bytes);
-	client->getRequest().processMsg();
+	try
+	{
+		client->getParser().consume(buffer, bytes);
+	}
+	catch(HttpParser::HttpRequestParsingException& e)
+	{
+		std::cerr << e.what() << '\n';
+	}
 	// std::cout << bytes << " EOF: "<< client->getRequest().eof() << std::endl; REMOVE
 }
 
 //[TODO] Change the argument when the client handle request and respond itself
-int	Sender::sendMsg(Client* client, std::vector<char> msg) {
+int	Sender::sendMsg(Client* client) {
 	size_t	bytes;
+	std::string	&msg = client->getResponse()->get_full_response();
 
 	bytes = send(client->getSocket(), msg.data() + client->getIndex(), msg.size() - client->getIndex(), MSG_DONTWAIT);
+	// std::cout << msg << std::endl;
 	if (bytes < 0) 
 		return -1;
 	client->setIndex(client->getIndex() + bytes);
@@ -101,10 +111,12 @@ void	WebServ::server_loop() {
 				Recipient::getMsg(dynamic_cast<Client*>(incoming));
 				
 				// logs << "[DEBUG] Message received :\n" << incoming->msg.data() << '\0' << std::endl;
-				if (client->getRequest().eof()) {
-					//RequestHandler requestHandler(serverConfig, httpRequest, epollFd);
-					//requestHandler.handle_request();
-					logs << "[LOGS] Message: \n" << client->getRequest() << std::endl;
+				if (client->getParser().isComplete()) {
+					HttpRequest *httprequest = client->getParser().generateRequest();
+					ServerConfig server_conf = this->global_conf.get_servers()[0];
+					RequestHandler requestHandler(server_conf, *httprequest, _epollFd);
+					Response *response = requestHandler.handle_request();
+					client->setResponse(*response);
 					ev.events = EPOLLOUT;
 					ev.data.ptr = incoming;			
 					epoll_ctl(_epollFd, EPOLL_CTL_MOD, incoming->getSocket(), &ev);
@@ -114,7 +126,7 @@ void	WebServ::server_loop() {
 				Client* client = dynamic_cast<Client*>(incoming);
 				logs << "Sending a response." << std::endl;
 				//[TODO] Logic broken here
-				if (Sender::sendMsg(dynamic_cast<Client*>(incoming), GetFile(location + client->getRequest().get_uri()))) {
+				if (Sender::sendMsg(client)) {
 					epoll_ctl(_epollFd, EPOLL_CTL_DEL, incoming->getSocket(), 0);
 					delete(incoming);
 				}

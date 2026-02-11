@@ -5,13 +5,14 @@
 #include <vector>
 
 #include "ServerConfig.hpp"
+#include "ConfigParser.hpp"
 
-#define BUFFSIZE 100
+#define BUFFSIZE 4096
 
 class WebServ {
 	public:
-		WebServ();										//Default constructor
-		WebServ(std::ostream& logStream, std::ostream& errorStream);
+		// WebServ();										//Default constructor
+		WebServ(std::ostream& logStream, std::ostream& errorStream, ConfigParser &parser);
 		~WebServ();										//Destructor
 		WebServ(const WebServ &other);				//Copy constructor
 		WebServ &operator=(const WebServ &other);	//Copy operator
@@ -31,6 +32,7 @@ class WebServ {
 
 		std::ostream& logs;
 		std::ostream& errorLogs;
+		ConfigParser	&global_conf;
 };
 
 #endif

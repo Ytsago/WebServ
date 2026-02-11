@@ -19,5 +19,5 @@ class Recipient {
 //Beware of fractionnal msg
 class Sender {
 	public:
-		static int sendMsg(Client* client, std::vector<char> msg);
+		static int sendMsg(Client* client);
 };

@@ -3,6 +3,7 @@
 
 #include <iostream>
 
+#include "Response.hpp"
 #include "HttpRequest.hpp"
 #include "ServerConfig.hpp"
 #include "LocationConfig.hpp"
@@ -23,10 +24,10 @@ class RequestHandler
 		RequestHandler(const RequestHandler &other);
 		RequestHandler &operator=(const RequestHandler &other);
 	
-		void		handle_request();
-		void		build_get_response();
-		void		build_post_response();
-		void		build_delete_response();
+		Response	*handle_request();
+		Response	*build_get_response();
+		Response	*build_post_response();
+		Response	*build_delete_response();
 		bool		get_upload_type(std::string &content_type);
 		bool		get_cgi_ext(std::string &ext);
 		std::string	get_file_path();

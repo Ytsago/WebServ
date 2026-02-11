@@ -133,7 +133,7 @@ std::string	RequestHandler::get_file_path()
 	return (path); 
 }
 
-void	RequestHandler::build_get_response()
+Response	*RequestHandler::build_get_response()
 {
 	/**
 	 * Find corresponding location
@@ -156,8 +156,8 @@ void	RequestHandler::build_get_response()
 	if (get_cgi_ext(ext))
 		CgiHandler::execute_cgi(this->_server, this->_request, this->_location, path, this->_epollFd);
 	file = GetFile(path);
-	Response response(OK, file.size(), path, true);
-	//Sender::send(response);
+	Response *response = new Response(OK, file, path, true);
+	return (response);
 }
 
 static bool	check_if_method_allowed(LocationConfig &location, std::string method)
@@ -189,7 +189,7 @@ bool	RequestHandler::get_upload_type(std::string &content_type)
 	return false;
 }
 
-void	RequestHandler::build_post_response()
+Response	*RequestHandler::build_post_response()
 {
 	/**
 	 * Get location
@@ -206,44 +206,44 @@ void	RequestHandler::build_post_response()
 	std::string		ext;
 	std::string		path;
 	std::string		content_type;
+	Response 		*response;
 
 	this->find_corresponding_location();
 	path = this->get_file_path();
 	if (!check_if_method_allowed(this->_location, "POST"))
 	{
-		Response response(METHOD_NOT_ALLOWED);
-		//Sender::send(response);
+		response = new Response(METHOD_NOT_ALLOWED);
 	}
 	if (this->get_cgi_ext(ext))
 	{
 		CgiHandler::execute_cgi(this->_server, this->_request, this->_location, path, this->_epollFd);
 		//Response
-		//Sender::send(response);
 	}
 	if (this->get_upload_type(content_type))
 	{
 		//FileHandler file_handler(...);
 		//Response
-		//Sender::send(response);
 	}
 	else
 	{
-		Response response(UNSUPORTED_MEDIA_TYPE);
-		//Sender::send(response);
+		response = new Response(UNSUPORTED_MEDIA_TYPE);
 	}
+	return (response);
 }
 
-void	RequestHandler::build_delete_response()
+Response	*RequestHandler::build_delete_response()
 {
-
+	Response 		*response = new Response(UNSUPORTED_MEDIA_TYPE);
+	return (response);
 }
 
-void	RequestHandler::handle_request()
+Response	*RequestHandler::handle_request()
 {
 	if (this->_request.getMethod() == "GET")
-		this->build_get_response();
+		return this->build_get_response();
 	if (this->_request.getMethod() == "POST")
-		this->build_post_response();
+		return this->build_post_response();
 	if (this->_request.getMethod() == "DELETE")
-		this->build_delete_response();
+		return this->build_delete_response();
+	return NULL;
 }

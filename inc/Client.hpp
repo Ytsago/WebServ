@@ -2,6 +2,7 @@
 # define CLIENT_HPP
 
 # include "ANetContainer.hpp"
+# include "HttpParser.hpp"
 # include "Response.hpp"
 # include "Request.hpp"
 
@@ -14,14 +15,15 @@ class Client : public ANetContainer {
 		Client &operator=(const Client &other);	//Copy operator
 
 		int			get_type() const;
-		Request&	getRequest();
 		const size_t&	getIndex() const;
+		HttpParser&	getParser();
+		Response	*getResponse();
 	
 		void	setIndex(size_t newIndex);
+		void	setResponse(Response &response);
 	private:
-		Request 	request;
-		// Response	response;
-
-		size_t	index;
+		HttpParser	parser;
+		size_t		index;
+		Response	*_response;
 };
 #endif

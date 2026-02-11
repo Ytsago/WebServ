@@ -5,31 +5,33 @@
 #include <unistd.h>
 #include <algorithm>
 
-Response::Response(int code, size_t body_size, std::string path, bool connection) : AMessage() 
+Response::Response(int code, byteVector body, std::string path, bool connection)
 {
+	this->cursor = 0;
 	std::string status = "Unknown Status";
 	if (g_status_map.count(code))
         status = g_status_map[code];
 	this->build_entry_line(code, status);
-	this->build_header(body_size, path, connection);
+	this->build_header(body.size(), path, connection);
+	this->_full_response.insert(this->_full_response.end(), body.begin(), body.end());
 }
 
-Response::Response(const Response &other) : AMessage(other) {}
+Response::Response(const Response &other) {
+	(void)other;
+}
 
 Response	&Response::operator=(const Response &other) {
-	if (this != &other)
-	{
-		this->::AMessage::operator=(other);
-	}
+	(void)other;
 	return (*this);
 }
 
 Response::~Response() {}
 
+std::string	&Response::get_full_response() {return this->_full_response;}
 
 void	Response::build_entry_line(int code, std::string status)
 {
-	byteVector		entry_line;
+	std::string		entry_line;
 	std::string		method = "HTTP/1.1 ";
 	std::string		delimiter = "\r\n";
 	std::string		str_code;
@@ -39,7 +41,7 @@ void	Response::build_entry_line(int code, std::string status)
 	entry_line.insert(entry_line.end(), str_code.begin(), str_code.end());
 	entry_line.insert(entry_line.end(), status.begin(), status.end());
 	entry_line.insert(entry_line.end(), delimiter.begin(), delimiter.end());
-	this->_entryLine = entry_line;
+	this->_full_response = entry_line;
 }
 
 static std::string	get_mime_type(std::string &path)
@@ -80,6 +82,7 @@ void	Response::build_header(size_t body_size, std::string path, bool connection)
 	std::map<std::string, std::string>	header;
 	std::string			str_size;
 
+	this->_full_response += "Content-Length: " + str_size + "\r\n\r\n";
 	str_size = int_to_string(body_size);
 	header["Content-Length"] = str_size;
 	if (!path.empty())

@@ -45,34 +45,16 @@ std::vector<unsigned char>	fileReader(std::string path) {
 	return data;
 }
 
-// int main(int ac, char* const av[]) {
-// 	std::ofstream	logs("logs.txt");
-	
-// 	if (ac == 2)
-// 	{
-// 		try
-// 		{
-// 			WebServ server(std::cout, std::cerr);
-// 			server.run(av[1]);
-// 		}
-// 		catch (const std::exception& e) 
-// 		{
-// 			std::cout << e.what() << std::endl;
-// 			return (1);
-//     	}
-// 	}
-// }
-
-
 int main(int ac, char* const av[]) {
 	std::ofstream	logs("logs.txt");
-
+	
 	if (ac == 2)
 	{
 		try
 		{
 			ConfigParser	parser(av[1]);
-			std::cout << parser;
+			WebServ server(std::cout, std::cerr, parser);
+			server.run(av[1]);
 		}
 		catch (const std::exception& e) 
 		{
@@ -81,3 +63,4 @@ int main(int ac, char* const av[]) {
     	}
 	}
 }
+
