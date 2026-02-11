@@ -69,6 +69,9 @@ $(OBJDIR):
 $(LIBS): FORCE
 	@$(MAKE) -C $(LIBDIR) --no-print-directory
 
+test:
+	$(MAKE) run -C ./test/
+
 # -----------UTILS-----------#
 
 run: all
@@ -95,4 +98,4 @@ FORCE:
 
 -include $(DEPS)
 
-.PHONY: clean fclean re all bonus
+.PHONY: clean fclean re all bonus test

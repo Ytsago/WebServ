@@ -9,6 +9,7 @@ OBJDIR	= .Obj/
 SRCS	= $(wildcard $(SRCDIR)*.cpp) \
 		  $(FUNCDIR)class/HttpParser.cpp \
 		  $(FUNCDIR)class/HttpRequest.cpp \
+		  $(FUNCDIR)class/HeaderMap.cpp \
 		  $(FUNCDIR)utils.cpp \
 		  main.cpp
 
@@ -26,7 +27,7 @@ $(OBJDIR)%.o: | $(OBJDIR)
 $(OBJDIR):
 	mkdir -p $(OBJDIR)
 
-run: all
+run: re
 	./$(NAME)
 
 clean:

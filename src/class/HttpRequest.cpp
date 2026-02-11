@@ -33,7 +33,7 @@ std::string	HttpRequest::getHeader(const std::string& key) const
 
 const std::string&	HttpRequest::getMethod() const {return _method;}
 const std::string&	HttpRequest::getUri() const {return _uri;}
-const std::vector<std::pair<std::string, std::string> >& HttpRequest::getHeaders() const {return _header;}
+const HeaderMap& HttpRequest::getHeaders() const {return _header;}
 const std::vector<char>&	HttpRequest::getBody() const {return _body;}
 
 HttpRequest::~HttpRequest() {

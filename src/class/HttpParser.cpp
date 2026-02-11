@@ -1,20 +1,15 @@
 #include "HttpParser.hpp"
 #include "StatusCode.hpp"
 #include <algorithm>
+#include <cstddef>
 #include "utils.hpp"
 
-HttpParser::HttpParser() : m_state(REQUEST_LINE), m_cursor(0) {
+HttpParser::HttpParser() : m_state(REQUEST_LINE), m_type(NONE), m_cursor(0), m_bodySize(0) {
 	m_readBuf.reserve(8192);
-	m_header.reserve(20);
+	m_headers.reserve(20);
 }
 
-std::string	HttpParser::getHeader(const std::string& key) const {
-	for (size_t i = 0; i < m_header.size(); i++) {
-		if (m_header[i].first == key)
-			return m_header[i].second;
-	}
-	return "";
-}
+std::string	HttpParser::getHeader(const std::string& key) const {return m_headers[key];}
 
 bool	HttpParser::isComplete() const {return m_state == COMPLETE;}
 
@@ -71,6 +66,126 @@ bool	HttpParser::parseRequestLine() {
 	return true;
 }
 
+void	HttpParser::parseMediaType(std::string& rawMedia) {
+	size_t	slashPos = rawMedia.find('/');
+
+	if (slashPos == std::string::npos || slashPos == rawMedia.size() -1 || slashPos == 0)
+		throw HttpRequestParsingException(BAD_REQUEST);
+
+	std::string	media = rawMedia.substr(0, slashPos);
+	m_subtype = rawMedia.substr(slashPos +1);
+	trim(media);
+	trim(m_subtype);
+
+	if (m_subtype.empty())
+		throw HttpRequestParsingException(BAD_REQUEST);
+	if (media == "text") m_type = TEXT;
+	else if (media == "application") m_type = APPLICATION;
+	else if (media == "multipart") m_type = MULTIPART;
+	else throw HttpRequestParsingException(UNSUPORTED_MEDIA_TYPE);
+}
+
+std::string	extractAttribute(const std::string& header, const std::string& attName) {
+	std::string	tmp(header);
+	strLower(tmp);
+
+	size_t	attIndex = tmp.find(attName);
+	while (attIndex != std::string::npos) {
+		if (attIndex == 0 || tmp[attIndex -1] == ' ' || tmp[attIndex -1] == ';')
+			break;
+		attIndex = tmp.find(attName, attIndex + 1);
+	}
+	if (attIndex == std::string::npos) return "";
+
+	size_t len;
+	size_t attEnd = tmp.find_first_of(" \t;", attIndex + attName.size());
+	if (attEnd == std::string::npos) len = std::string::npos;
+	else len = attEnd - attIndex - attName.size();
+
+	std::string attribute = header.substr(attIndex + attName.size(), len);
+	if (attribute.size() >= 2 && attribute[0] == '"' && attribute[attribute.size() -1] == '"')
+		return attribute.substr(1, attribute.size() -2);
+	return attribute;
+}
+
+std::string	extractBoundary(std::string& header) {
+	std::string tmp(header);
+	strLower(tmp);
+
+	size_t	boundIndex = tmp.find("boundary=");
+	if (boundIndex == std::string::npos) return "";
+
+	size_t	len;
+	size_t	boundEnd = tmp.find(" \t;", boundIndex +9);
+	if (boundEnd == std::string::npos)
+		len = std::string::npos;
+	else
+		len = boundEnd - (boundIndex + 9);
+
+	std::string	boundary = header.substr(boundIndex + 9, len);
+	if (boundary.size() >= 2 && boundary[0] == '"' && boundary[boundary.size() -1] == '"')
+		boundary = boundary.substr(1, boundary.size() -2);
+	return (boundary);
+}
+
+void	HttpParser::processHeader() {
+	std::string header;
+	if (!(header = getHeader("transfer-encoding")).empty()) {
+		if (header != "chunked")
+			throw HttpRequestParsingException(NOT_IMPLEMENTED);
+		m_state = CHUNKEDBODY;
+	}
+	else if (!(header = getHeader("content-length")).empty()) {
+		char*	endptr;
+		long	val;
+		val = std::strtol(header.c_str(), &endptr, 10);
+		if (*endptr != '\0' || val < 0 || val > MAX_BODY_SIZE)
+			throw HttpRequestParsingException(BAD_REQUEST);
+		m_contentLength = static_cast<size_t>(val);
+		if (m_contentLength > 0) {
+			m_state = BODY;
+		}
+		else
+			m_state = COMPLETE;
+	}
+	else {
+		m_state = COMPLETE;
+		return ;
+	}
+	if (!(header = getHeader("content-type")).empty()) {
+		size_t	semiColon = header.find(';');
+		std::string	media = header.substr(0, semiColon);
+		if (media.empty())
+			return ;
+		strLower(media); parseMediaType(media);
+		switch (m_type) {
+			case TEXT:
+				if (m_subtype.empty())
+					throw HttpRequestParsingException(BAD_REQUEST);
+				break;
+			case APPLICATION:
+				if (m_subtype == "x-www-form-urlencoded") {
+					throw HttpRequestParsingException(UNSUPORTED_MEDIA_TYPE);
+					break ;
+				}
+				else if (m_subtype == "octet-stream")
+					m_type = TEXT;
+				else
+					throw HttpRequestParsingException(UNSUPORTED_MEDIA_TYPE);
+				break ;
+			case MULTIPART:
+				if (m_subtype != "form-data")
+					throw HttpRequestParsingException(UNSUPORTED_MEDIA_TYPE);
+				m_boundary = extractBoundary(header);
+				if (m_boundary.empty()) throw HttpRequestParsingException(BAD_REQUEST);
+				break ;
+			default:
+				throw HttpRequestParsingException(UNSUPORTED_MEDIA_TYPE);
+		}
+	}
+	return ;
+}
+
 //TODO add check for host
 bool	HttpParser::parseHeader() {
 	std::vector<char>::iterator	itStart = m_readBuf.begin() + m_cursor;
@@ -81,27 +196,7 @@ bool	HttpParser::parseHeader() {
 
 	if (itEndLine == itStart) {
 		m_cursor += 2;
-		std::string cl;
-		if (!(cl = getHeader("transfer-encoding")).empty()) {
-			if (cl != "chunked")
-				throw HttpRequestParsingException(NOT_IMPLEMENTED);
-			m_state = CHUNKEDBODY;
-			return true;
-		}
-		else if (!(cl = getHeader("content-length")).empty()) {
-			char*	endptr;
-			long	val;
-			val = std::strtol(cl.c_str(), &endptr, 10);
-			if (*endptr != '\0' || val < 0 || val > MAX_BODY_SIZE)
-				throw HttpRequestParsingException(BAD_REQUEST);
-			m_contentLength = static_cast<size_t>(val);
-			if (m_contentLength > 0) {
-				m_state = BODY;
-				m_body.reserve(m_contentLength);
-				return true;
-			}
-		}
-		m_state = COMPLETE;
+		processHeader();
 		return true;
 	}
 
@@ -126,11 +221,11 @@ bool	HttpParser::parseHeader() {
 		strLower(value);
 
 	std::vector<std::pair<std::string, std::string> >::iterator	it;
-	for (it = m_header.begin(); it != m_header.end(); it++)
+	for (it = m_headers.begin(); it != m_headers.end(); it++)
 		if (it->first == key)
 			break;
-	if (it == m_header.end())
-		m_header.push_back(std::pair<std::string, std::string>(key, value));
+	if (it == m_headers.end())
+		m_headers.add(key, value);
 	else 
 		it->second += ", " + value;
 
@@ -144,11 +239,23 @@ bool	HttpParser::parseBody() {
 
 	if (available > 0) {
 		size_t	toCopy = (available < bytesNeeded) ? available : bytesNeeded;
+		// switch (m_type) {
+		// 	case TEXT:
+		// 		m_body.insert(m_body.end(), m_readBuf.begin() + m_cursor, m_readBuf.begin() + toCopy+ m_cursor);
+		// 		break ;
+		// 	case APPLICATION:
+		// 		throw HttpRequestParsingException(UNSUPORTED_MEDIA_TYPE);
+		// 	case MULTIPART:
+		// 		break ;
+		// 	default:
+		// 		throw HttpRequestParsingException(UNSUPORTED_MEDIA_TYPE);
+		// }
 		m_body.insert(m_body.end(), m_readBuf.begin() + m_cursor, m_readBuf.begin() + toCopy+ m_cursor);
 		m_cursor += toCopy;
+		m_bodySize += toCopy;
 	}
 
-	if (m_body.size() == m_contentLength) {
+	if (m_bodySize == m_contentLength) {
 		m_state = COMPLETE;
 		return true;
 	}
@@ -167,6 +274,8 @@ void	HttpParser::reset() {
 	m_cursor = 0;
 	m_contentLength = 0;
 	m_state = REQUEST_LINE;
+	m_type = NONE;
+	m_bodySize = 0;
 }
 
 HttpRequest*	HttpParser::generateRequest() {
@@ -174,7 +283,7 @@ HttpRequest*	HttpParser::generateRequest() {
 
 	request->_method.swap(m_method);
 	request->_body.swap(m_body);
-	request->_header.swap(m_header);
+	request->_header.swap(m_headers);
 	request->_uri.swap(m_path);
 	request->_contentLength = m_contentLength;
 
