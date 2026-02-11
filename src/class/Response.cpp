@@ -79,17 +79,16 @@ static std::string	get_http_date()
 
 void	Response::build_header(size_t body_size, std::string path, bool connection)
 {
-	std::map<std::string, std::string>	header;
 	std::string			str_size;
+	std::ostringstream	buffer;
 
-	this->_full_response += "Content-Length: " + str_size + "\r\n\r\n";
 	str_size = int_to_string(body_size);
-	header["Content-Length"] = str_size;
-	if (!path.empty())
-		header["Content-Type"] = get_mime_type(path);
-	header["Date"] = get_http_date();
-	if (connection)
-		header["Connection"] = "keep-alive";
-	else
-		header["Connection"] = "close";
+	buffer << 
+	"Content-Length: " << str_size << '\n' <<
+	"Content-Type: " << get_mime_type(path) << '\n' <<
+	"Date: " << get_http_date() << '\n' <<
+	"Connection: " << (connection ? "keep-alive" : "close") << '\n' <<
+	"\r\n\r\n";
+	this->_full_response += buffer.str();
 }
+

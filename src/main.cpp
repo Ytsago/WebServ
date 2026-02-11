@@ -1,5 +1,6 @@
 #include "WebServ.hpp"
 #include "ConfigParser.hpp"
+#include "StatusCode.hpp"
 #include <fcntl.h>
 #include <fstream>
 #include "Request.hpp"
@@ -54,6 +55,8 @@ int main(int ac, char* const av[]) {
 		{
 			ConfigParser	parser(av[1]);
 			WebServ server(std::cout, std::cerr, parser);
+
+			init_status_map();
 			server.run(av[1]);
 		}
 		catch (const std::exception& e) 
