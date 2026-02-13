@@ -11,7 +11,7 @@ void test_case_insensitive_headers() {
     const char* request = 
         "GET /test HTTP/1.1\r\n"
         "Host: example.com\r\n"
-        "Content-Type: application/json\r\n"
+        "Content-Type: multipart/form-data; boundary=hello\r\n"
         "CONTENT-LENGTH: 5\r\n"
         "\r\n"
         "12345";

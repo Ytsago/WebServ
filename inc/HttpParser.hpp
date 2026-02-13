@@ -3,6 +3,7 @@
 
 #include "HttpRequest.hpp"
 #include "HeaderMap.hpp"
+#include "StatusCode.hpp"
 
 # define MAX_BODY_SIZE 1000000 //Has to depend on the host server
 
