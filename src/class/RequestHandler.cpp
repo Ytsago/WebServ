@@ -2,6 +2,7 @@
 #include "Response.hpp"
 #include "CgiHandler.hpp"
 #include "StatusCode.hpp"
+#include "FileHandler.hpp"
 #include "utils.hpp"
 #include <unistd.h>
 #include <sys/epoll.h>
@@ -221,7 +222,7 @@ Response	*RequestHandler::build_post_response()
 	}
 	if (this->get_upload_type(content_type))
 	{
-		//FileHandler file_handler(...);
+		FileHandler file_handler(this->_request, this->_location, content_type);
 		//Response
 	}
 	else
