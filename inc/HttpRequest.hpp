@@ -31,6 +31,7 @@ class HttpRequest {
 		size_t	_contentLength;
 	friend class HttpParser;
 	friend class RequestHandlerTester;
+	friend class FileHandlerTester;
 };
 
 #endif

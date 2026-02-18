@@ -10,8 +10,8 @@ class FileHandler
 
 		FileHandler(HttpRequest &request, LocationConfig &location, std::string &content_type);
 		~FileHandler();
-		// FileHandler(const FileHandler &other);
-		// FileHandler &operator=(const FileHandler &other);
+		FileHandler(const FileHandler &other);
+		FileHandler &operator=(const FileHandler &other);
 
 		void	multiparse(const std::vector<char> &chunk);
 
@@ -30,6 +30,7 @@ class FileHandler
 			std::string			&_contentType;
 			std::string			_boundary;
 			std::string			_filename;
+			std::string			_uploadPath;
 			std::vector<char>	_buffer;
 			MultipartState		_state;
 			int					_fileFd;
