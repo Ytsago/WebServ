@@ -126,6 +126,8 @@ ServerConfig	ConfigParser::parse_server(std::ifstream &file)
 		}
 		else if (key == "location")
 			server.push_location(this->parse_location(file, line, server));
+		// else
+		// 	throw ConfigException("Invalid server field", this->_lineCount);
 	}
 	if (!server.is_default_set())
 	{
@@ -144,6 +146,7 @@ LocationConfig	ConfigParser::parse_location(std::ifstream &file, std::string hea
 {
 	LocationConfig		location;
 	std::stringstream	ss(header);
+	std::string			path;
 	std::string			line;
 	std::string			key;
 	std::string			s_value;
@@ -152,11 +155,10 @@ LocationConfig	ConfigParser::parse_location(std::ifstream &file, std::string hea
 	bool				has_ext = false;
 	bool				has_path = false;
 
-	ss >> s_value;
-	if (!(ss >> s_value))
+	if (!(ss >> s_value >> path) || path.empty() || path == "{")
 		throw ConfigException("Invalid path value", this->_lineCount);
-	location.set_path(s_value);
-	if (s_value == "/")
+	location.set_path(path);
+	if (path == "/")
 	{
 		server.set_default_location(location);
 		server.set_is_default_set(true);
@@ -189,13 +191,13 @@ LocationConfig	ConfigParser::parse_location(std::ifstream &file, std::string hea
 		}
 		else if (key == "root")
 		{
-			if (!(ss >> s_value))
+			if (!(ss_line >> s_value))
 				throw ConfigException("Invalid root value", this->_lineCount);
 			location.set_root(s_value);
 		}
 		else if (key == "index")
 		{
-			if (!(ss >> s_value))
+			if (!(ss_line >> s_value))
 				throw ConfigException("Invalid index value", this->_lineCount);
 			location.set_index(s_value);
 		}
@@ -224,6 +226,8 @@ LocationConfig	ConfigParser::parse_location(std::ifstream &file, std::string hea
 			location.set_is_cgi(true);
 			has_path = true;
 		}
+		// else
+		// 	throw ConfigException("Invalid location field", this->_lineCount);
 	}
 	if (location.is_cgi() && (!has_ext || !has_path))
 		throw ConfigException("CGI configuration is incomplete: both 'cgi_ext' and 'cgi_path' are required", this->_lineCount);

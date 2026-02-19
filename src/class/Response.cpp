@@ -52,7 +52,7 @@ static std::string	get_mime_type(std::string &path)
 
 	if (mime_types.empty()) 
 	{
-        mime_types[".html"] = "text/html";
+        mime_types[".html"] = "text/html"; 
         mime_types[".css"] = "text/css";
         mime_types[".js"] = "text/javascript";
         mime_types[".png"] = "image/png";

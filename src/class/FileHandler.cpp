@@ -80,12 +80,12 @@ static std::string extract_filename(std::vector<char>::iterator begin, std::vect
 	return (sanitize_filename(filename));
 }
 
-static void	print_buf(std::vector<char> &buf)
-{
-	for (std::vector<char>::iterator ite = buf.begin(); ite != buf.end(); ite++)
-		std::cout << *ite;
-	std::cout << "+++++++++++++++++++++\n";
-}
+// static void	print_buf(std::vector<char> &buf)
+// {
+// 	for (std::vector<char>::iterator ite = buf.begin(); ite != buf.end(); ite++)
+// 		std::cout << *ite;
+// 	std::cout << "+++++++++++++++++++++\n";
+// }
 
 void FileHandler::multiparse(const std::vector<char> &chunk) 
 {

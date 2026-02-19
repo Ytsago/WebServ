@@ -54,10 +54,10 @@ int main(int ac, char* const av[]) {
 		try
 		{
 			ConfigParser	parser(av[1]);
-			WebServ server(std::cout, std::cerr, parser);
+			// WebServ server(std::cout, std::cerr, parser);
 
 			init_status_map();
-			server.run(av[1]);
+			// server.run(av[1]);
 		}
 		catch (const std::exception& e) 
 		{
