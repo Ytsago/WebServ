@@ -126,8 +126,8 @@ ServerConfig	ConfigParser::parse_server(std::ifstream &file)
 		}
 		else if (key == "location")
 			server.push_location(this->parse_location(file, line, server));
-		// else
-		// 	throw ConfigException("Invalid server field", this->_lineCount);
+		else
+			throw ConfigException("Invalid server field", this->_lineCount);
 	}
 	if (!server.is_default_set())
 	{
@@ -226,8 +226,8 @@ LocationConfig	ConfigParser::parse_location(std::ifstream &file, std::string hea
 			location.set_is_cgi(true);
 			has_path = true;
 		}
-		// else
-		// 	throw ConfigException("Invalid location field", this->_lineCount);
+		else
+			throw ConfigException("Invalid location field", this->_lineCount);
 	}
 	if (location.is_cgi() && (!has_ext || !has_path))
 		throw ConfigException("CGI configuration is incomplete: both 'cgi_ext' and 'cgi_path' are required", this->_lineCount);

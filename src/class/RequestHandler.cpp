@@ -157,8 +157,7 @@ Response	*RequestHandler::build_get_response()
 	if (get_cgi_ext(ext))
 		CgiHandler::execute_cgi(this->_server, this->_request, this->_location, path, this->_epollFd);
 	file = GetFile(path);
-	Response *response = new Response(OK, file, path, true);
-	return (response);
+	return new Response(OK, file, path, true);
 }
 
 static bool	check_if_method_allowed(LocationConfig &location, std::string method)
@@ -207,35 +206,40 @@ Response	*RequestHandler::build_post_response()
 	std::string		ext;
 	std::string		path;
 	std::string		content_type;
-	Response 		*response;
+	byteVector		body;
 
 	this->find_corresponding_location();
 	path = this->get_file_path();
 	if (!check_if_method_allowed(this->_location, "POST"))
-	{
-		response = new Response(METHOD_NOT_ALLOWED);
-	}
-	if (this->get_cgi_ext(ext))
+		return new Response(METHOD_NOT_ALLOWED);
+	else if (this->get_cgi_ext(ext))
 	{
 		CgiHandler::execute_cgi(this->_server, this->_request, this->_location, path, this->_epollFd);
-		//Response
+		return new Response(OK, body, path, true);
 	}
-	if (this->get_upload_type(content_type))
+	else if (this->get_upload_type(content_type))
 	{
 		FileHandler file_handler(this->_request, this->_location, content_type);
-		//Response
+		return new Response(OK, body, path, true);
 	}
 	else
-	{
-		response = new Response(UNSUPORTED_MEDIA_TYPE);
-	}
-	return (response);
+		return new Response(UNSUPORTED_MEDIA_TYPE);
 }
 
 Response	*RequestHandler::build_delete_response()
 {
-	Response 		*response = new Response(UNSUPORTED_MEDIA_TYPE);
-	return (response);
+    std::string path;
+
+    this->find_corresponding_location();
+    path = this->get_file_path();
+    if (!check_if_method_allowed(this->_location, "DELETE"))
+        return new Response(METHOD_NOT_ALLOWED);
+    if (access(path.c_str(), F_OK) != 0)
+        return new Response(NOT_FOUND);
+    if (unlink(path.c_str()) == 0)
+        return new Response(INTERNAL_SERVER_ERROR);
+    else
+        return new Response(INTERNAL_SERVER_ERROR);
 }
 
 Response	*RequestHandler::handle_request()

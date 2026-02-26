@@ -84,8 +84,8 @@ int	Sender::sendMsg(Client* client) {
 
 	bytes = send(client->getSocket(), msg.data() + client->getIndex(), msg.size() - client->getIndex(), MSG_DONTWAIT);
 	// std::cout << msg << std::endl;
-	if (bytes < 0) 
-		return -1;
+	// if (bytes < 0) 
+	// 	return -1;
 	client->setIndex(client->getIndex() + bytes);
 	if (client->getIndex() == msg.size())
 		return 1;
