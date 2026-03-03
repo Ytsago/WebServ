@@ -1,4 +1,5 @@
 #include "WebServ.hpp"
+#include "Logger.hpp"
 #include "ConfigParser.hpp"
 #include "StatusCode.hpp"
 #include <fcntl.h>
@@ -46,24 +47,37 @@ std::vector<unsigned char>	fileReader(std::string path) {
 	return data;
 }
 
+// int main(int ac, char* const av[]) {
+// 	std::ofstream	logs("logs.txt");
+//
+// 	if (ac == 2)
+// 	{
+// 		try
+// 		{
+// 			ConfigParser	parser(av[1]);
+// 			WebServ server(std::cout, std::cerr, parser);
+//
+// 			init_status_map();
+// 			server.run(av[1]);
+// 		}
+// 		catch (const std::exception& e) 
+// 		{
+// 			std::cout << e.what() << std::endl;
+// 			return (1);
+//     	}
+// 	}
+// }
+//
+//
 int main(int ac, char* const av[]) {
-	std::ofstream	logs("logs.txt");
-	
 	if (ac == 2)
 	{
-		try
-		{
-			ConfigParser	parser(av[1]);
-			WebServ server(std::cout, std::cerr, parser);
-
-			init_status_map();
+		try {
+			WebServ	server;
 			server.run(av[1]);
 		}
-		catch (const std::exception& e) 
-		{
-			std::cout << e.what() << std::endl;
-			return (1);
-    	}
+		catch (const std::exception &e) {
+			Logger::record(ERROR) << e.what();
+		}
 	}
 }
-

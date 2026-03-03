@@ -1,4 +1,7 @@
-#pragma once
+#ifndef CONFIGEXCEPTION_HPP
+#define CONFIGEXCEPTION_HPP
+
+#include <sstream>
 
 class ConfigException : public std::exception {
 private:
@@ -22,3 +25,5 @@ public:
 		return _message.c_str();
 	}
 };
+
+#endif

@@ -1,9 +1,9 @@
 #include "CgiContainer.hpp"
 #include "ANetContainer.hpp"
 
-CgiContainer::CgiContainer() : ANetContainer() {}
+CgiContainer::CgiContainer() : AEventHandler() {}
 
-CgiContainer::CgiContainer(const CgiContainer &other) : ANetContainer(other) 
+CgiContainer::CgiContainer(const CgiContainer &other) : AEventHandler(other) 
 {
 	(void)other;
 }
@@ -15,6 +15,12 @@ CgiContainer	&CgiContainer::operator=(const CgiContainer &other)
 }
 
 CgiContainer::~CgiContainer() {}
+
+int	CgiContainer::handleEvent(uint32_t event, WebServ &context) {
+	(void) event;
+	(void) context;
+	return 0;
+}
 
 int	CgiContainer::get_type() const 
 {

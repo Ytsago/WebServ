@@ -5,6 +5,8 @@
 # include "HttpRequest.hpp"
 # include "Response.hpp"
 # include "Request.hpp"
+#include "WebServ.hpp"
+#include <stdint.h>
 
 class CgiHandler
 {
@@ -18,6 +20,7 @@ class CgiHandler
 		CgiHandler &operator=(const CgiHandler &other);
 
 		static void	execute_cgi(ServerConfig &server, HttpRequest &request, LocationConfig &location, std::string &path, int &epollFd);
+		int	handleEvent(uint32_t event, WebServ& context);
 
 };
 #endif

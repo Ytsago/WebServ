@@ -1,0 +1,649 @@
+#ifndef AEVENTHANDLER_HPP
+#define AEVENTHANDLER_HPP
+
+#include <ctime>
+#include <list>
+#include <stdint.h>
+#include "WebServ.hpp"
+
+enum	e_retState {
+	CONFIG_OK,
+	CONFIG_KO,
+	SRV_NEW_CLT,
+	SRV_FAIL_CLT,
+	CLT_MSG_RCV,
+	CLT_MSG_END,
+	CLT_MSG_ERR,
+	RM_CLT,
+	EPOLL_CTL_OK,
+	EPOLL_CTL_FAIL,
+};
+
+class AEventHandler {
+	protected:
+		int		_fd;
+		time_t	_lastAlive;
+		std::list<AEventHandler*>::iterator	timeout_it;
+
+		void	setSocket(int fd);
+		int	addToEpoll(WebServ& context, int event);
+	public:
+		class HandlerException : public std::exception{
+			private:
+				const char* msg;
+			public:
+				HandlerException(const char* str);
+				const char*	what() const throw();
+		};
+
+		AEventHandler();
+		virtual ~AEventHandler();
+		virtual int	handleEvent(uint32_t event, WebServ& context) = 0;
+
+		int	getSocket() const;
+		const time_t&	getTimeout() const;
+		std::list<AEventHandler*>::iterator	getTimeoutIt();	
+};
+
+#endif
+#ifndef CLIENTHANDLER_HPP
+#define CLIENTHANDLER_HPP
+
+#include "AEventHandler.hpp"
+#include "HttpParser.hpp"
+#include "ServerHandler.hpp"
+#include "ServerConfig.hpp"
+
+class ClientHandler : public AEventHandler {
+	private:
+		const std::vector<ServerConfig>*	_hostConf;
+		HttpParser		_parser;
+		HttpRequest*	_request;
+	public:
+		ClientHandler();
+		~ClientHandler();
+		ClientHandler(WebServ& context, ServerHandler& host);
+
+		int	handleEvent(uint32_t event, WebServ& context);
+
+		int	receiveMsg();
+		int	sendMsg();
+};
+
+#endif
+#ifndef LOGGER_HPP
+#define LOGGER_HPP
+
+#include <iostream>
+#include "color.h"
+
+enum	logLevel {
+	INFO,
+	SETUP,
+	SUCCESS,
+	WARNING,
+	ERROR,
+	DEBUG,
+};
+
+class LogLine {
+	private:
+		std::ostream& _os;
+	public:
+		LogLine(std::ostream& os);
+		~LogLine();
+		
+		template <typename T>
+		LogLine& operator<<(const T& msg) {
+			_os << msg;
+			return *this;	
+		}
+};
+
+class Logger {
+	private:
+		Logger();
+		Logger(const Logger& other);
+		Logger(std::ostream& logStream, std::ostream& errStream);
+		Logger&	operator=(const Logger& other);
+		~Logger();
+
+		std::ostream&	logs;
+		std::ostream&	errLogs;
+		bool			color;
+	public:
+		static Logger&	getInstance();
+		static std::ostream&	out();
+		static std::ostream&	err();
+		static std::ostream&	log(logLevel level);
+		static LogLine	record(logLevel level);
+		static bool	getColor();
+};
+
+#endif
+#ifndef SERVERHANDLER_HPP
+#define SERVERHANDLER_HPP
+
+#include "AEventHandler.hpp"
+#include "ServerConfig.hpp"
+
+class ServerHandler : public AEventHandler {
+	private:
+		std::vector<ServerConfig>	_config;
+	public:
+		ServerHandler(WebServ& context, std::map<int, std::vector<ServerConfig> >::iterator& it);
+		~ServerHandler();
+
+		int	handleEvent(uint32_t event, WebServ& context);
+		
+		const std::vector<ServerConfig>&	getConfig() const;
+		int	getPort() const;
+};
+
+#endif
+#ifndef WEBSERV_HPP
+#define WEBSERV_HPP
+
+#include <map>
+#include <list>
+#include "ConfigParser.hpp"
+
+#define BUFFSIZE 4096
+#define MAXEVENT 1024
+#define TIMEOUT -1
+
+class AEventHandler;
+
+class WebServ {
+	private:
+		WebServ(const WebServ& other);
+		WebServ& operator=(const WebServ& other);
+		
+		void	initHost();
+		int		setConfig(const char* arg);
+		void	checkTimeout();
+
+		std::list<AEventHandler*>		timeout;
+		std::map<int, AEventHandler*>	registery;
+		std::vector<ServerConfig>		serversConfig;
+		int	epollFd;
+	public:
+		WebServ();
+		~WebServ();
+
+		void	run(const char *arg);
+		void	removeHandler(AEventHandler* handler);
+
+		int	getEpoll() const;	
+		std::list<AEventHandler*>&	getTimeList();
+		std::map<int, AEventHandler*>&	getRegistery();
+};
+
+#endif
+#include "AEventHandler.hpp"
+#include "Logger.hpp"
+#include <sys/epoll.h>
+#include <unistd.h>
+
+AEventHandler::AEventHandler(): _fd(-1) {}
+
+int	AEventHandler::addToEpoll(WebServ& context, int event) {
+	epoll_event	ev;
+
+	Logger::record(SETUP) << "Adding " << _fd << "to epoll";
+	ev.events = event, ev.data.ptr = this;
+	if (epoll_ctl(context.getEpoll(), EPOLL_CTL_ADD, _fd, &ev) < 0) {
+		Logger::record(ERROR) << "Failed to add event to epoll";
+		close(_fd);
+		_fd = -1;
+		return EPOLL_CTL_FAIL;
+	}
+	Logger::record(SUCCESS) << _fd << " added successfully";
+	return EPOLL_CTL_OK;
+}
+
+const char*	AEventHandler::HandlerException::what() const throw() {return msg;}
+
+int	AEventHandler::getSocket() const {return _fd;}
+std::list<AEventHandler*>::iterator	AEventHandler::getTimeoutIt() {return timeout_it;}
+const time_t&	AEventHandler::getTimeout() const {return _lastAlive;}
+
+void	AEventHandler::setSocket(int fd) {_fd = fd;}
+
+AEventHandler::~AEventHandler() {
+	if (_fd != -1) close(_fd);
+}
+
+#include "ClientHandler.hpp"
+#include "Logger.hpp"
+#include <sys/epoll.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
+ClientHandler::ClientHandler(): AEventHandler(), _hostConf(NULL) {
+}
+
+ClientHandler::ClientHandler(WebServ& context, ServerHandler& host) {
+	Logger::record(SETUP) << "Creating new client.";
+	if ((_fd = accept(host.getSocket(), NULL, NULL)) < 0) {
+		Logger::record(ERROR) << "Failed to accept connection on " << host.getSocket();
+		throw std::runtime_error("Error, client.");
+	}
+
+	if (addToEpoll(context, EPOLLIN) == EPOLL_CTL_FAIL) {
+		throw AEventHandler::HandlerException("Epoll fail");
+	}
+
+	context.getTimeList().push_front(this);
+	context.getRegistery()[_fd] = this;
+	timeout_it = context.getTimeList().begin();
+	_hostConf = &host.getConfig();
+	_lastAlive = std::time(NULL);
+}
+
+int	ClientHandler::receiveMsg() {
+	size_t	bytes;
+	char	buffer[BUFFSIZE];
+
+	Logger::record(INFO) << "Receiving a msg from: " << _fd;
+	bytes = recv(_fd, buffer, BUFFSIZE, MSG_DONTWAIT);
+	if (bytes == 0) {
+		Logger::record(ERROR) << "Failed to read msg from client " << _fd << ". Closing connection...";
+		return CLT_MSG_ERR;
+	}
+
+	if (bytes < 0) {
+		if (errno != EAGAIN && errno != EWOULDBLOCK)
+			Logger::record(ERROR) << "Failed to read msg from client " << _fd << ". Closing connection...";
+		return CLT_MSG_ERR;
+	}
+
+	try {
+		_parser.consume(buffer, bytes);
+	}
+	catch (HttpParser::HttpRequestParsingException &e) {
+		Logger::record(ERROR) << e.what();
+	}
+
+	if (_parser.isComplete()) {
+		Logger::record(INFO) << "Message is complete !";
+		return CLT_MSG_END;
+	}
+	_lastAlive = std::time(NULL);
+	return CLT_MSG_RCV;
+}
+
+int	ClientHandler::handleEvent(uint32_t event, WebServ& context) {
+	if (event == EPOLLIN) {
+		switch (receiveMsg()) {
+			case CLT_MSG_END:
+				context.getTimeList().splice(context.getTimeList().begin(), context.getTimeList(), timeout_it);
+				if (_request) delete _request;
+				_request = _parser.generateRequest();
+				break;
+			case CLT_MSG_RCV:
+				context.getTimeList().splice(context.getTimeList().begin(), context.getTimeList(), timeout_it);
+				return CLT_MSG_RCV;
+			case CLT_MSG_ERR:
+				return CLT_MSG_ERR;
+			default:
+				return 0;
+		}
+	}
+
+	epoll_event ev;
+	ev.events = EPOLLOUT;
+	ev.data.ptr = this;
+	epoll_ctl(context.getEpoll(), EPOLL_CTL_MOD, _fd, &ev);
+
+	if (event == EPOLLOUT) sendMsg();
+		return 0;
+}
+
+
+
+ClientHandler::~ClientHandler() {
+	if (_request) delete _request;
+}
+#include "Logger.hpp"
+
+LogLine::LogLine(std::ostream& os) : _os(os) {}
+
+LogLine::~LogLine() {
+	if (Logger::getColor()) _os << RESET << std::endl;
+	else _os << std::endl;
+}
+
+//-------------Logger-------------//
+
+Logger::Logger(): logs(std::cout), errLogs(std::cerr), color(true) {}
+Logger::Logger(std::ostream& logStream, std::ostream& errStream): logs(logStream), errLogs(errStream) {}
+bool	Logger::getColor() {return Logger::getInstance().color;}
+
+Logger& Logger::getInstance() {
+	static Logger _instance(std::cout, std::cerr);
+	return (_instance);
+}
+
+std::ostream&	Logger::out() {
+	return Logger::getInstance().logs;
+}
+
+std::ostream&	Logger::err() {
+	return Logger::getInstance().errLogs;
+}
+
+std::ostream&	Logger::log(logLevel level) {
+	Logger& instance = getInstance();
+	std::ostream&	os = (level == ERROR) ? instance.err() : instance.out();
+
+	if (instance.color) {
+		switch (level) {
+			case INFO: os << FG_AQUA; break;
+			case SETUP: os << FG_SALMON;  break;
+			case SUCCESS: os << FG_LIME; break;
+			case WARNING: os << FG_AMBER; break;
+			case ERROR: os << FG_TOMATO; break;
+			case DEBUG: os << FG_CHARCOAL; break;
+		}
+	}
+
+	switch (level) {
+		case INFO: os << "[INFO]: "; break;
+		case SETUP: os << "[SETUP]: "; break;
+		case SUCCESS: os << "[DONE]: "; break;
+		case WARNING: os << "[WARNING]: "; break;
+		case ERROR: os << "[ERROR]: "; break;
+		case DEBUG: os << "[DEBUG]: "; break;
+	}
+	return os;
+}
+
+LogLine	Logger::record(logLevel level) {
+	return LogLine(log(level));
+}
+#include "HttpRequest.hpp"
+#include <fstream>
+#include <unistd.h>
+#include "Parser/inc/Parser.hpp"
+#include "utils.hpp"
+
+struct	PartData {
+	int fd;
+	std::string			filename;
+	HeaderMap			headers;
+	std::vector<char>	data;
+
+	PartData(): fd(-1) {};
+	~PartData() {if (fd > 0) close(fd);}
+};
+
+class MultiPartParser {
+	public:
+		MultiPartParser(const std::string& boundary);
+		~MultiPartParser();
+
+		void	consume(const char* data, size_t len);
+		void	reset();
+		
+		enum State{START, BOUND, HEADER, CONTENT, DONE};
+	private:
+		State	m_state;
+		size_t	m_cursor;
+		std::vector<PartData>	m_part;
+		const std::string	m_bound;
+
+		
+};
+
+class PartDataAction: public IAction {
+	virtual void	run(Token& T) const {
+		std::string	filename = extractAttribute(T.toStr(), "filename=");
+		if (!filename.empty())
+			std::ofstream	outfile()
+	}
+};
+
+void	MultiPartParser::consume(const char* data, size_t len) {
+	Parser	bound(StringParser(m_bound.c_str()));
+	Parser	boundSep(StringParser("--"));
+	Parser	endLine(StringParser("\r\n"));
+
+	Parser	parseLine = endLine.opt() + (boundSep + bound) + endLine;
+	Parser	finale = parseLine.action(ParserDataAction())
+	ParserResult<Token> res = parseLine.parse(data, len, 0);
+	if (!res.success)
+		throw std::runtime_error("BAD REQUEST");
+	m_cursor = res.cursor;
+}
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   newNetworkHandler.cpp                              :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: secros <marvin@42.fr>                      +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2026/02/26 13:32:31 by secros            #+#    #+#             */
+/*   Updated: 2026/02/27 13:54:01 by secros           ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#pragma once
+
+#include <cerrno>
+#include <ctime>
+#include <sys/socket.h>
+#include <sys/epoll.h>
+#include <unistd.h>
+
+
+
+//----------------------------------------------------//
+
+
+//----------------------------------------------------//
+
+
+
+//----------------------------------------------------//
+
+
+
+//----------------------------------------------------//
+
+
+
+//----------------------------------------------------//
+class CGIHandler : public AEventHandler {
+	public:
+		CGIHandler();
+		int	handleEvent(uint32_t event, WebServ& context);
+};
+
+#include "ServerHandler.hpp"
+#include "Logger.hpp"
+#include <netinet/in.h>
+#include <sys/epoll.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#include "ClientHandler.hpp"
+
+ServerHandler::ServerHandler(WebServ& context, std::map<int, std::vector<ServerConfig> >::iterator& it) {
+	int	serverFd;
+	sockaddr_in	servAddr;
+	_config = it->second;
+
+	Logger::record(SETUP) << "Openning a socket...";
+	if ((serverFd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)) < 0) {
+		Logger::record(ERROR) << "Can't open socket.";
+		throw AEventHandler::HandlerException("No socket avaible.");
+	}
+
+	servAddr.sin_family = AF_INET;
+	servAddr.sin_port = htons(it->first);
+	servAddr.sin_addr.s_addr = INADDR_ANY;
+
+	Logger::record(SETUP) << "Binding socket.";
+	if (bind(serverFd, (struct sockaddr*)&servAddr, sizeof(servAddr))) {
+		close(serverFd);
+		Logger::record(ERROR) << "ERROR, can't bind socket to port: " << it->first;
+		throw AEventHandler::HandlerException("Port is not avaible.");
+	}
+
+	Logger::record(SETUP) << "listening on port: " << it->first;
+	if (listen(serverFd, SOMAXCONN) < 0) {
+		close(serverFd);
+		Logger::record(ERROR) << "Error, failed to listen on socket.";
+		throw AEventHandler::HandlerException("Can't listen on socket.");
+	}
+
+	setSocket(serverFd);
+	if (addToEpoll(context, EPOLLIN) == EPOLL_CTL_FAIL)
+		throw AEventHandler::HandlerException("Epoll fail");
+
+	Logger::record(SUCCESS) << "Success, socket is ready !";
+}
+
+const std::vector<ServerConfig>&	ServerHandler::getConfig() const {return _config;}
+
+int	ServerHandler::handleEvent(uint32_t event, WebServ& context) {
+	if (event == EPOLLIN) {
+		try {
+			new ClientHandler(context, *this);
+		}
+		catch (std::exception &e) {
+			Logger::err() << e.what() << std::endl;
+			return SRV_FAIL_CLT;
+		}
+	}
+	return SRV_NEW_CLT;
+}
+
+ServerHandler::~ServerHandler() {
+
+}
+#include "WebServ.hpp"
+#include "AEventHandler.hpp"
+#include "ServerHandler.hpp"
+#include "Logger.hpp"
+#include <sys/epoll.h>
+#include <sys/signal.h>
+
+bool	g_running = true;
+
+void	sigHandler(int sig) {
+	if (sig == SIGINT)
+		g_running = false;
+}
+
+WebServ::WebServ() {
+
+	Logger::record(SETUP) << "Creating epoll fd to manage event..."; 
+	epollFd = epoll_create(1);
+	if (epollFd < 0) {
+		Logger::record(ERROR) << "Failed to create the epoll loop";
+		throw std::runtime_error("Error, epoll failed to load...");
+	}
+
+	Logger::record(SETUP) << "Creating the singal handler...";
+	signal(SIGINT, sigHandler);
+
+	Logger::record(SUCCESS) << "You can safely quit the program with CTRL + C";
+}
+
+void	WebServ::initHost() {
+	std::map<int, std::vector<ServerConfig> >	groups;
+	std::vector<ServerConfig>::iterator it = serversConfig.begin();
+
+	for (; it != serversConfig.end(); it++) {
+		int port = it->get_listen_port();
+		groups[port].push_back(*it);
+	}
+
+	for (std::map<int, std::vector<ServerConfig> >::iterator ite = groups.begin(); ite != groups.end(); ite++) {
+		Logger::record(SETUP) << "Creating a new host to listen on port: " << ite->first;
+		AEventHandler*	server;
+		try {
+			server = new ServerHandler(*this, ite);
+		}
+		catch (AEventHandler::HandlerException &e) {
+			Logger::record(ERROR) << e.what();
+			continue;
+		}
+		registery[server->getSocket()] = server;
+	}
+	if (registery.empty())
+		throw std::runtime_error("No server is listening.\n Closing.");
+}
+
+int	WebServ::setConfig(const char* arg) {
+	ConfigParser	parser;
+
+	Logger::record(SETUP) << "Reading config file: " << arg;
+	try {
+		parser.parse_file(arg);
+	}
+	catch (ConfigException &e) {
+		Logger::record(ERROR) << "Failed to load configuration file.\n"
+			<< e.what();
+		return CONFIG_KO;
+	}
+	Logger::record(SUCCESS) << "Config file loaded !";
+	serversConfig = parser.get_servers();
+	return CONFIG_OK;
+}
+
+void	WebServ::checkTimeout() {
+	std::list<AEventHandler*>::reverse_iterator rit = timeout.rbegin();
+
+	for (; rit != timeout.rend(); rit++) {
+		AEventHandler*	curr = *rit;
+		if (std::time(NULL) - curr->getTimeout() > TIMEOUT)
+			removeHandler(curr);
+		else
+			return ;
+	}
+}
+
+void	WebServ::run(const char *arg) {
+	epoll_event	events[MAXEVENT];
+
+	if (setConfig(arg) == CONFIG_KO)
+		throw std::runtime_error("Temporary error may need to change it");
+	initHost();
+
+	while(g_running) {
+		int nfds = epoll_wait(epollFd, events, MAXEVENT, TIMEOUT);
+		for (int i = 0; i < nfds; i++) {
+			AEventHandler* incoming = reinterpret_cast<AEventHandler*>(events[i].data.ptr);
+			switch (incoming->handleEvent(events[i].events, *this)) {
+				case CLT_MSG_ERR:
+					removeHandler(incoming);
+					break;
+				default:
+					break ;
+			}
+		}
+		checkTimeout();
+	}
+}
+
+void WebServ::removeHandler(AEventHandler* handler) {
+	Logger::record(INFO) << "Removing handler: " << handler->getSocket();
+	if (!handler) return;
+	epoll_ctl(epollFd, EPOLL_CTL_DEL, handler->getSocket(), NULL);
+	timeout.erase(handler->getTimeoutIt());
+	registery.erase(handler->getSocket());
+	delete handler;
+}
+
+WebServ::~WebServ() {
+	std::map<int, AEventHandler*>::iterator it = registery.begin();
+
+	for (; it != registery.end(); it++)
+		removeHandler(it->second);
+}
+
+int	WebServ::getEpoll() const {return epollFd;}
+std::list<AEventHandler*>&		WebServ::getTimeList() {return timeout;}
+std::map<int, AEventHandler*>&	WebServ::getRegistery() {return registery;}

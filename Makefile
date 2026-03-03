@@ -20,23 +20,25 @@ MAIN =	main.cpp							utils.cpp
 CLASS = ConfigParser.cpp					LocationConfig.cpp			\
 		ServerConfig.cpp					WebServ.cpp					\
 		AMessage.cpp						Request.cpp					\
-		Server.cpp							Client.cpp					\
-		ANetContainer.cpp					Response.cpp				\
+		AEventHandler.cpp					ServerHandler.cpp			\
+		ClientHandler.cpp					Response.cpp				\
 		CgiHandler.cpp						RequestHandler.cpp			\
 		FileHandler.cpp						CgiContainer.cpp			\
 		StatusCode.cpp						HttpRequest.cpp				\
-		HttpParser.cpp						HeaderMap.cpp
+		HttpParser.cpp						HeaderMap.cpp				\
+		Logger.cpp
 
 INC = ConfigParser.hpp						LocationConfig.hpp			\
 	ServerConfig.hpp						ConfigException.hpp			\
 	WebServ.hpp								AMessage.hpp				\
-	ANetContainer							Recipient.hpp				\
-	Request.hpp								Client.hpp					\
-	Server.hpp								Response.hpp				\
-	CgiHandler.hpp							RequestHandler.hpp			\
+	AEventHandler.hpp						Recipient.hpp				\
+	Request.hpp								ClientHandler.hpp			\
+	ServerHandler.hpp						Response.hpp				\
+	Logger.hpp								RequestHandler.hpp			\
 	FileHandler.hpp							CgiContainer.hpp			\
 	StatusCode.hpp							HttpRequest.hpp				\
-	HttpParser.hpp							HeaderMap.hpp
+	HttpParser.hpp							HeaderMap.hpp				\
+	CgiHandler.hpp
 
 # -----------SRCS-----------#
 
