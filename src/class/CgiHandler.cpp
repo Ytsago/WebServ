@@ -128,9 +128,10 @@ void	CgiHandler::execute_cgi(ServerConfig &server, HttpRequest &request, Locatio
 	*		epoll ctl pipefd[1] on EPOLLOUT
 	*		epoll ctl pipefd[2] on EPOLLIN
 	*/
-	ANetContainer	*newCgi = new CgiContainer;
-	add_to_epoll(epollFd, pipefd[1], EPOLLOUT, newCgi);
-	add_to_epoll(epollFd, pipefd[2], EPOLLIN, newCgi);
+	// AEventHandler	*newCgi = new CgiContainer;
+	(void) epollFd;
+	// add_to_epoll(epollFd, pipefd[1], EPOLLOUT, newCgi);
+	// add_to_epoll(epollFd, pipefd[2], EPOLLIN, newCgi);
 	pid = fork();
 	if (pid == -1)
 	{

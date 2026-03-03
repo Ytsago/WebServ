@@ -3,6 +3,7 @@
 #include "CgiHandler.hpp"
 #include "StatusCode.hpp"
 #include "utils.hpp"
+#include <sstream>
 #include <unistd.h>
 #include <sys/epoll.h>
 #include <algorithm>

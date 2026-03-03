@@ -1,221 +1,125 @@
 #include "WebServ.hpp"
-#include "ConfigParser.hpp"
-#include "RequestHandler.hpp"
-#include <sys/socket.h>
+#include "AEventHandler.hpp"
+#include "ServerHandler.hpp"
+#include "Logger.hpp"
 #include <sys/epoll.h>
-#include <netinet/in.h>
-#include <unistd.h>
-#include <cstring>
-#include <fstream>
-#include <fcntl.h>
-#include <signal.h>
-#include "ConfigException.hpp"
-#include "Client.hpp"
-#include "Server.hpp"
-#include "Recipient.hpp"
-#include "utils.hpp"
+#include <sys/signal.h>
 
-static const std::string	location("./website/");
-const char* errInit = "Critical error happend during initialization.";
-
-sig_atomic_t running = 1;
+bool	g_running = true;
 
 void	sigHandler(int sig) {
 	if (sig == SIGINT)
-		running = 0;
+		g_running = false;
 }
 
-// WebServ::WebServ() : _epollFd(-1), logs(std::cout), errorLogs(std::cerr), global_conf() {
-// }
+WebServ::WebServ() {
 
-WebServ::WebServ(std::ostream& logStream, std::ostream& errorStream, ConfigParser &parser) : _epollFd(-1), logs(logStream), errorLogs(errorStream), global_conf(parser)  {
-	if ((_epollFd = epoll_create(1)) < 0)
-		throw std::runtime_error(errInit);
-}
-
-WebServ::WebServ(const WebServ &other) : _epollFd(other._epollFd), logs(other.logs), errorLogs(other.errorLogs), global_conf(other.global_conf) {
-}
-
-WebServ	&WebServ::operator=(const WebServ &other) {
-	(void) other;
-	return (*this);
-}
-
-bool	WebServ::newConnection(struct epoll_event& ev, int serverFd) const  {
-	//Add a new client to the epoll list
-   	struct sockaddr_in	clientAddr;
-   	socklen_t dummyLen = sizeof(clientAddr);
-
-	logs << "Accpeting new connection." << std::endl;
-   	int clientFd = accept(serverFd, (struct sockaddr*) &clientAddr, &dummyLen);
-   	if (clientFd == -1)
-   		return 1;
-	(void)ev;
-	//-> utility of ev ? do we need to initialize it in the server loop or is it sufficient in add_to_epoll ?
-   	ANetContainer *newClient = new Client;
-	newClient->setSocket(clientFd);
-	if (add_to_epoll(this->_epollFd, clientFd, EPOLLIN, newClient))
-	{
-   		logs << "[LOGS] New connection on " << clientFd << std::endl;
-		return true;
+	Logger::record(SETUP) << "Creating epoll fd to manage event..."; 
+	epollFd = epoll_create(1);
+	if (epollFd < 0) {
+		Logger::record(ERROR) << "Failed to create the epoll loop";
+		throw std::runtime_error("Error, epoll failed to load...");
 	}
-	return false;
+
+	Logger::record(SETUP) << "Creating the singal handler...";
+	signal(SIGINT, sigHandler);
+
+	Logger::record(SUCCESS) << "You can safely quit the program with CTRL + C";
 }
 
-//[TODO] Move to his own class.
-void Recipient::getMsg(Client* client) {
-	char	buffer[BUFFSIZE];
-	int		bytes;
+void	WebServ::initHost() {
+	std::map<int, std::vector<ServerConfig> >	groups;
+	std::vector<ServerConfig>::iterator it = serversConfig.begin();
 
-	bytes = recv(client->getSocket(), buffer, BUFFSIZE, MSG_DONTWAIT);
-	try
-	{
-		client->getParser().consume(buffer, bytes);
+	for (; it != serversConfig.end(); it++) {
+		int port = it->get_listen_port();
+		groups[port].push_back(*it);
 	}
-	catch(HttpParser::HttpRequestParsingException& e)
-	{
-		std::cerr << e.what() << '\n';
+
+	for (std::map<int, std::vector<ServerConfig> >::iterator ite = groups.begin(); ite != groups.end(); ite++) {
+		Logger::record(SETUP) << "Creating a new host to listen on port: " << ite->first;
+		AEventHandler*	server;
+		try {
+			server = new ServerHandler(*this, ite);
+		}
+		catch (AEventHandler::HandlerException &e) {
+			Logger::record(ERROR) << e.what();
+			continue;
+		}
+		registery[server->getSocket()] = server;
 	}
-	// std::cout << bytes << " EOF: "<< client->getRequest().eof() << std::endl; REMOVE
+	if (registery.empty())
+		throw std::runtime_error("No server is listening.\n Closing.");
 }
 
-//[TODO] Change the argument when the client handle request and respond itself
-int	Sender::sendMsg(Client* client) {
-	size_t	bytes;
-	std::string	&msg = client->getResponse()->get_full_response();
+int	WebServ::setConfig(const char* arg) {
+	ConfigParser	parser;
 
-	bytes = send(client->getSocket(), msg.data() + client->getIndex(), msg.size() - client->getIndex(), MSG_DONTWAIT);
-	// std::cout << msg << std::endl;
-	if (bytes < 0) 
-		return -1;
-	client->setIndex(client->getIndex() + bytes);
-	if (client->getIndex() == msg.size())
-		return 1;
-	return 0;
+	Logger::record(SETUP) << "Reading config file: " << arg;
+	try {
+		parser.parse_file(arg);
+	}
+	catch (ConfigException &e) {
+		Logger::record(ERROR) << "Failed to load configuration file.\n"
+			<< e.what();
+		return CONFIG_KO;
+	}
+	Logger::record(SUCCESS) << "Config file loaded !";
+	serversConfig = parser.get_servers();
+	return CONFIG_OK;
 }
 
+void	WebServ::checkTimeout() {
+	std::list<AEventHandler*>::reverse_iterator rit = timeout.rbegin();
 
-void	WebServ::server_loop() {
-	struct epoll_event	ev, events[MAXEVENT];
+	for (; rit != timeout.rend(); rit++) {
+		AEventHandler*	curr = *rit;
+		if (std::time(NULL) - curr->getTimeout() > TIMEOUT)
+			removeHandler(curr);
+		else
+			return ;
+	}
+}
 
-	while (running)
-	{
-		int nfds = epoll_wait(_epollFd, events, MAXEVENT, TIMEOUT);
+void	WebServ::run(const char *arg) {
+	epoll_event	events[MAXEVENT];
+
+	if (setConfig(arg) == CONFIG_KO)
+		throw std::runtime_error("Temporary error may need to change it");
+	initHost();
+
+	while(g_running) {
+		int nfds = epoll_wait(epollFd, events, MAXEVENT, TIMEOUT);
 		for (int i = 0; i < nfds; i++) {
-			ANetContainer* incoming = reinterpret_cast<ANetContainer*>(events[i].data.ptr);
-			if (incoming->get_type() != CLIENT) {
-				while (!newConnection(ev, incoming->getSocket()));
-				logs << "[LOGS] Connection added !" << std::endl;
-			}
-			else if (events[i].events & EPOLLIN) {
-				Client* client = dynamic_cast<Client*>(incoming);
-				logs << "[LOGS] Recieving a msg from client " << incoming->getSocket() << std::endl;
-				Recipient::getMsg(dynamic_cast<Client*>(incoming));
-				
-				// logs << "[DEBUG] Message received :\n" << incoming->msg.data() << '\0' << std::endl;
-				if (client->getParser().isComplete()) {
-					HttpRequest *httprequest = client->getParser().generateRequest();
-					ServerConfig server_conf = this->global_conf.get_servers()[0];
-					RequestHandler requestHandler(server_conf, *httprequest, _epollFd);
-					Response *response = requestHandler.handle_request();
-					client->setResponse(*response);
-					ev.events = EPOLLOUT;
-					ev.data.ptr = incoming;			
-					epoll_ctl(_epollFd, EPOLL_CTL_MOD, incoming->getSocket(), &ev);
-				}
-			}
-			else if (events[i].events & EPOLLOUT) {
-				Client* client = dynamic_cast<Client*>(incoming);
-				logs << "Sending a response." << std::endl;
-				//[TODO] Logic broken here
-				if (Sender::sendMsg(client)) {
-					epoll_ctl(_epollFd, EPOLL_CTL_DEL, incoming->getSocket(), 0);
-					delete(incoming);
-				}
-				/**
-				Compare URI of request with paths of location and send
-				corresponding index
-				--> Response response = build_response([ServerConfig] server, [Request] request);
-				
-				if (Sender::sendMsg(GetFile(response.getRaw()), incoming->socket) == 1) {
-					epoll_ctl(_epollFd, EPOLL_CTL_DEL, incoming->socket, 0);
-					delete(incoming);
-				}
-				**/
+			AEventHandler* incoming = reinterpret_cast<AEventHandler*>(events[i].data.ptr);
+			switch (incoming->handleEvent(events[i].events, *this)) {
+				case CLT_MSG_ERR:
+					removeHandler(incoming);
+					break;
+				default:
+					break ;
 			}
 		}
+		checkTimeout();
 	}
 }
 
-void	WebServ::epoll_init(std::vector<ServerConfig> &servers) {
-	struct epoll_event	ev;
-	std::vector<ServerConfig>::iterator it;
-
-	if ((this->_epollFd = epoll_create(1)) < 0) {
-		errorLogs << "Error, can't create the epoll object." << std::endl;
-		throw ConfigException("tg", 2);
-	}
-
-	for (it = servers.begin(); it != servers.end(); it++)
-	{
-		ANetContainer *server = new Server;
-		server->setSocket(it->get_socket());
-		ev.events = EPOLLIN, ev.data.ptr = server;
-		if ((epoll_ctl(_epollFd, EPOLL_CTL_ADD, it->get_socket(), &ev)) < 0)
-			throw ConfigException("tg", 2);
-	}
-}
-
-void	WebServ::serverSetup(ServerConfig &server) {
-	sockaddr_in servAddr;
-	int serverFd;
-	
-	logs << "[SETUP] Openning socket." << std::endl;
-	if ((serverFd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)) < 0)
-	{
-		errorLogs << "Error, can't open socket retrying in 5 sec...\n";
-		throw ConfigException("tg", 2);
-	}
-	servAddr.sin_family = AF_INET;
-	servAddr.sin_port = htons(server.get_listen_port());
-	servAddr.sin_addr.s_addr = INADDR_ANY;
-	logs << "[SETUP] Binding socket." << std::endl;
-	if (bind(serverFd, (struct sockaddr*)&servAddr, sizeof(servAddr))) {
-		errorLogs << "ERROR, can't bind socket retrying in 3 sec...\n";
-		throw ConfigException("tg", 2);
-	}
-	logs << "[SETUP] listening." << std::endl;
-	if (listen(serverFd, SOMAXCONN) < 0) {
-		errorLogs << "Error, failed to listen on socket." << std::endl;
-		throw ConfigException("tg", 2);
-	}
-	server.set_socket(serverFd);
-	logs << "[SETUP] success, socket is ready !" << std::endl;
-}
-
-void	WebServ::initServers(std::vector<ServerConfig>& servers) {
-	std::vector<ServerConfig>::iterator it;
-
-	for (it = servers.begin(); it != servers.end(); it++) {
-
-	}
-}
-
-bool	WebServ::run(const char *arg) {
-	signal(SIGINT, sigHandler);
-	ConfigParser	parser(arg);
-	std::vector<ServerConfig> servers = parser.get_servers();
-	std::vector<ServerConfig>::iterator it;
-
-	for (it = servers.begin(); it != servers.end(); it++)
-		serverSetup(*it);
-	epoll_init(servers);
-	server_loop();
-	std::cout << "Good ending" << std::endl;
-	return 0;
+void WebServ::removeHandler(AEventHandler* handler) {
+	Logger::record(INFO) << "Removing handler: " << handler->getSocket();
+	if (!handler) return;
+	epoll_ctl(epollFd, EPOLL_CTL_DEL, handler->getSocket(), NULL);
+	timeout.erase(handler->getTimeoutIt());
+	registery.erase(handler->getSocket());
+	delete handler;
 }
 
 WebServ::~WebServ() {
-	if (this->_epollFd > 0)
-		close(this->_epollFd);
+	std::map<int, AEventHandler*>::iterator it = registery.begin();
+
+	for (; it != registery.end(); it++)
+		removeHandler(it->second);
 }
+
+int	WebServ::getEpoll() const {return epollFd;}
+std::list<AEventHandler*>&		WebServ::getTimeList() {return timeout;}
+std::map<int, AEventHandler*>&	WebServ::getRegistery() {return registery;}

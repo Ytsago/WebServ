@@ -1,4 +1,5 @@
-#pragma once
+#ifndef SERVERCONFIG_HPP
+#define SERVERCONFIG_HPP
 
 #include "LocationConfig.hpp"
 
@@ -51,3 +52,5 @@ class ServerConfig
 };
 
 std::ostream &operator<<(std::ostream &out, const ServerConfig &serv);
+
+#endif

@@ -3,6 +3,7 @@
 #include "CgiHandler.hpp"
 #include "utils.hpp"
 #include <unistd.h>
+#include <sstream>
 #include <algorithm>
 
 Response::Response(int code, byteVector body, std::string path, bool connection)

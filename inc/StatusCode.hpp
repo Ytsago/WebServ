@@ -1,4 +1,5 @@
-#pragma once
+#ifndef STATUSCODE_HPP
+#define STATUSCODE_HPP
 
 #include <map>
 #include <iostream>
@@ -24,3 +25,5 @@ enum	e_status_code {
 extern std::map<int, std::string> g_status_map;
 
 void	init_status_map();
+
+#endif

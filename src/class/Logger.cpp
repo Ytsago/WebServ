@@ -55,3 +55,7 @@ std::ostream&	Logger::log(logLevel level) {
 LogLine	Logger::record(logLevel level) {
 	return LogLine(log(level));
 }
+
+Logger::~Logger() {
+
+}

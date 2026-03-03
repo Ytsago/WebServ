@@ -1,9 +1,7 @@
-#pragma once
+#ifndef LOCATIONCONFIG_HPP
+#define LOCATIONCONFIG_HPP
 
 #include <iostream>
-#include <fstream>
-#include <sstream>
-#include <cstddef>
 #include <vector>
 
 class ServerConfig;
@@ -48,3 +46,5 @@ class LocationConfig
 };
 
 std::ostream &operator<<(std::ostream &out, const LocationConfig &location);
+
+#endif

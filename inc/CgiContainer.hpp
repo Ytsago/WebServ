@@ -1,9 +1,9 @@
 #ifndef CGICONTAINER_HPP
 # define CGICONTAINER_HPP
 
-# include "ANetContainer.hpp"
+# include "AEventHandler.hpp"
 
-class CgiContainer : public ANetContainer 
+class CgiContainer : public AEventHandler 
 {
 	private:
 
@@ -14,6 +14,7 @@ class CgiContainer : public ANetContainer
 		CgiContainer(const CgiContainer &other);
 		CgiContainer &operator=(const CgiContainer &other);
 
+		int		handleEvent(uint32_t event, WebServ &context);
 		int		get_type() const;
 };
 
