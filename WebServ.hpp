@@ -3,7 +3,8 @@
 
 #include <map>
 #include <list>
-#include "color.h"
+#include "ConfigParser.hpp"
+
 #define BUFFSIZE 4096
 
 class AEventHandler;
@@ -13,21 +14,20 @@ class WebServ {
 		WebServ(const WebServ& other);
 		WebServ& operator=(const WebServ& other);
 
-		std::list<AEventHandler*>	timeout;
+		std::list<AEventHandler*>		timeout;
 		std::map<int, AEventHandler*>	registery;
+		std::vector<ServerConfig>		serversConfig;
 		int	epollFd;
 	public:
 		WebServ();
 		~WebServ();
 
-		void	run();
+		void	run(const char *arg);
 		void	removeHandler(AEventHandler* handler);
 
 		int	getEpoll() const;	
 		std::list<AEventHandler*>&	getTimeList();
 		std::map<int, AEventHandler*>&	getRegistery();
-
-		#define SETUPEPOLL FG_ORANGE"SETUP: creating an epoll fd to manage event..."FG_RESET
 };
 
 #endif

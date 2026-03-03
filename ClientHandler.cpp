@@ -35,13 +35,13 @@ int	ClientHandler::receiveMsg() {
 	bytes = recv(_fd, buffer, BUFFSIZE, MSG_DONTWAIT);
 	if (bytes == 0) {
 		Logger::err() << "Failed to read msg from client " << _fd << ". Closing connection..." << std::endl;
-		return CLTMSGERR;
+		return CLT_MSG_ERR;
 	}
 
 	if (bytes < 0) {
 		if (errno != EAGAIN && errno != EWOULDBLOCK)
 			Logger::err() << "Failed to read msg from client " << _fd << ". Closing connection..." << std::endl;
-		return CLTMSGERR;
+		return CLT_MSG_ERR;
 	}
 
 	try {
@@ -55,7 +55,7 @@ int	ClientHandler::receiveMsg() {
 		return CLTMSGEND;
 	}
 	_lastAlive = std::time(NULL);
-	return CLTMSGRCV;
+	return CLT_MSG_RCV;
 }
 
 int	ClientHandler::handleEvent(uint32_t event, WebServ& context) {
@@ -65,8 +65,8 @@ int	ClientHandler::handleEvent(uint32_t event, WebServ& context) {
 				if (_request) delete _request;
 				_request = _parser.generateRequest();
 				break;
-			case CLTMSGRCV: break;
-			case CLTMSGERR: return CLTMSGERR;
+			case CLT_MSG_RCV: return CLT_MSG_RCV;
+			case CLT_MSG_ERR: return CLTMSGERR;
 			default: return 0;
 		}
 	}

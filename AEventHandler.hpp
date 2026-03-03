@@ -7,6 +7,8 @@
 #include "WebServ.hpp"
 
 enum	e_retState {
+	CONFIGOK,
+	CONFIGKO,
 	SRVNEWCLT,
 	SRVFAILCLT,
 	CLTMSGRCV,
