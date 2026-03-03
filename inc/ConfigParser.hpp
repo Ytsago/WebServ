@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CONFGIPARSER_HPP
+#define CONFGIPARSER_HPP
 
 #include <exception>
 
@@ -30,3 +31,5 @@ class ConfigParser
 };
 
 std::ostream &operator<<(std::ostream &out, const ConfigParser &conf);
+
+#endif

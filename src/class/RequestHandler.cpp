@@ -4,6 +4,7 @@
 #include "StatusCode.hpp"
 #include "FileHandler.hpp"
 #include "utils.hpp"
+#include <sstream>
 #include <unistd.h>
 #include <sys/epoll.h>
 #include <algorithm>
