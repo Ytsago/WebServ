@@ -4,11 +4,11 @@
 #include "StatusCode.hpp"
 #include "FileHandler.hpp"
 #include "utils.hpp"
-#include <sstream>
 #include <unistd.h>
 #include <sys/epoll.h>
 #include <algorithm>
 #include <map>
+#include <sstream>
 
 RequestHandler::RequestHandler(ServerConfig &server, HttpRequest &request, int &epollFd) :
 	_server(server),
@@ -92,23 +92,6 @@ void	RequestHandler::find_corresponding_location()
 	} 
 }
 
-bool	RequestHandler::get_cgi_ext(std::string &ext)
-{
-	std::string	uri = this->_request.getUri();
-	size_t		dot_pos;
-	size_t		query_pos;
-	
-	dot_pos = uri.find_last_of('.');
-	if (dot_pos == std::string::npos)
-		return false;
-	else
-	{
-		query_pos = uri.find('?', dot_pos);
-		ext = (query_pos == std::string::npos) ? uri.substr(dot_pos) : uri.substr(dot_pos, query_pos - dot_pos);
-		return true;
-	}
-}
-
 std::string	RequestHandler::get_file_path()
 {
 	std::string	uri = this->_request.getUri();
@@ -135,36 +118,10 @@ std::string	RequestHandler::get_file_path()
 	return (path); 
 }
 
-Response	*RequestHandler::build_get_response()
-{
-	/**
-	 * Find corresponding location
-	 * Build header: 
-	 * 		entry-line: "HTTP/1.1" + " " + "CODE" + " " + "STATUS" + "\r\n"
-	 * 		map:
-	 * 			Content-Length: body.size()
-	 * 			Content-Type: check file extension and find corresponding MIME type (create mime type static map) 
-	 * 			Date: timestamp RFC 7231 format
-	 * 			Etag ?
-	 * 			Connection: "keep-alive" or "close"
-	 * 	Body: data
-	**/
-	std::string		path;
-	byteVector		file;
-	std::string		ext;
-
-	this->find_corresponding_location();
-	path = this->get_file_path();
-	if (get_cgi_ext(ext))
-		CgiHandler::execute_cgi(this->_server, this->_request, this->_location, path, this->_epollFd);
-	file = GetFile(path);
-	return new Response(OK, file, path, true);
-}
-
 static bool	check_if_method_allowed(LocationConfig &location, std::string method)
 {
 	std::vector<std::string> 	allowed_methods = location.get_methods();
-
+	if (allowed_methods.empty()) return true;
 	for (size_t i = 0; i < allowed_methods.size(); i++)
 	{
 		if (allowed_methods[i].compare(method) == 0)
@@ -173,61 +130,68 @@ static bool	check_if_method_allowed(LocationConfig &location, std::string method
 	return false;
 }
 
-bool	RequestHandler::get_upload_type(std::string &content_type)
+bool RequestHandler::setupUpload(std::string &content_type)
 {
-	std::string req_content_type = this->_request.getHeader("Content-Type");
-
-	if (req_content_type.compare("multipart/form-data") == 0)
-	{
-		content_type = "multipart/form-data";
-		return true;
-	}
-	if (req_content_type.compare("application/octet-stream") == 0)
-	{
-		content_type = "application/octet-stream";
-		return true;
-	}
-	return false;
+	this->find_corresponding_location();
+	if (this->_request.getMethod() != "POST")
+		return false;
+	if (!check_if_method_allowed(this->_location, "POST"))
+		return false;
+	return this->get_upload_type(content_type);
 }
 
-Response	*RequestHandler::build_post_response()
+Response* RequestHandler::handle_request()
 {
-	/**
-	 * Get location
-	 * Is POST allowed here ? 
-	 * 		-> No 405
-	 * Is this a CGI script? (Path/Extension check) 
-	 * 		-> Yes: Execute script -> Pipe any body content to stdin -> Return script's output.
-	 * Is this a "Static" Upload? (Check Content-Type)
-	 * 		-> Is it multipart/form-data? -> Use internal upload logic.
-	 *		-> Is it application/octet-stream? -> Use internal upload logic.
-	 * None of the above ?
-	 * 		-> 415 
-	 */
+	std::string method = _request.getMethod();
+	if (method == "GET") 
+		return this->build_get_response();
+	if (method == "POST") 
+		return this->build_post_response();
+	if (method == "DELETE") 
+		return this->build_delete_response();
+	return new Response(METHOD_NOT_ALLOWED);
+}
+
+Response* RequestHandler::build_get_response()
+{
+	std::string		path;
+	byteVector		file;
+	std::string		ext;
+
+	this->find_corresponding_location();
+	path = this->get_file_path();
+	if (!check_if_method_allowed(this->_location, "GET"))
+		return new Response(METHOD_NOT_ALLOWED);
+	if (get_cgi_ext(ext))
+	{
+		CgiHandler::execute_cgi(this->_server, this->_request, this->_location, path, this->_epollFd);
+		return new Response(OK, byteVector(), path, true);
+	}
+	file = GetFile(path);
+	if (file.empty() && access(path.c_str(), F_OK) != 0)
+		return new Response(NOT_FOUND);
+	return new Response(OK, file, path, true);
+}
+
+Response* RequestHandler::build_post_response()
+{
 	std::string		ext;
 	std::string		path;
-	std::string		content_type;
-	byteVector		body;
+	byteVector		emptyBody;
 
 	this->find_corresponding_location();
 	path = this->get_file_path();
 	if (!check_if_method_allowed(this->_location, "POST"))
 		return new Response(METHOD_NOT_ALLOWED);
-	else if (this->get_cgi_ext(ext))
+	if (this->get_cgi_ext(ext))
 	{
 		CgiHandler::execute_cgi(this->_server, this->_request, this->_location, path, this->_epollFd);
-		return new Response(OK, body, path, true);
+		return new Response(OK, emptyBody, path, true);
 	}
-	else if (this->get_upload_type(content_type))
-	{
-		FileHandler file_handler(this->_request, this->_location, content_type);
-		return new Response(OK, body, path, true);
-	}
-	else
-		return new Response(UNSUPORTED_MEDIA_TYPE);
+	return new Response(CREATED, emptyBody, path, true);
 }
 
-Response	*RequestHandler::build_delete_response()
+Response* RequestHandler::build_delete_response()
 {
     std::string path;
 
@@ -238,18 +202,33 @@ Response	*RequestHandler::build_delete_response()
     if (access(path.c_str(), F_OK) != 0)
         return new Response(NOT_FOUND);
     if (unlink(path.c_str()) == 0)
-        return new Response(INTERNAL_SERVER_ERROR);
+        return new Response(NO_CONTENT);
     else
         return new Response(INTERNAL_SERVER_ERROR);
 }
 
-Response	*RequestHandler::handle_request()
+bool	RequestHandler::get_upload_type(std::string &content_type)
 {
-	if (this->_request.getMethod() == "GET")
-		return this->build_get_response();
-	if (this->_request.getMethod() == "POST")
-		return this->build_post_response();
-	if (this->_request.getMethod() == "DELETE")
-		return this->build_delete_response();
-	return NULL;
+	std::string req_ct = this->_request.getHeader("Content-Type");
+	if (req_ct.find("multipart/form-data") != std::string::npos) 
+	{
+		content_type = "multipart/form-data";
+		return true;
+	}
+	if (req_ct.find("application/octet-stream") != std::string::npos) {
+		content_type = "application/octet-stream";
+		return true;
+	}
+	return false;	
+}
+
+bool	RequestHandler::get_cgi_ext(std::string &ext)
+{
+	std::string	uri = this->_request.getUri();
+	size_t		dot_pos = uri.find_last_of('.');
+	if (dot_pos == std::string::npos)
+		return false;
+	size_t query_pos = uri.find('?', dot_pos);
+	ext = (query_pos == std::string::npos) ? uri.substr(dot_pos) : uri.substr(dot_pos, query_pos - dot_pos);
+	return true;
 }

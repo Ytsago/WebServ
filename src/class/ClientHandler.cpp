@@ -1,4 +1,5 @@
 #include "ClientHandler.hpp"
+#include "RequestHandler.hpp"
 #include "Logger.hpp"
 #include <cerrno>
 #include <sys/epoll.h>
@@ -26,45 +27,85 @@ ClientHandler::ClientHandler(WebServ& context, ServerHandler& host) {
 	_lastAlive = std::time(NULL);
 }
 
-int	ClientHandler::receiveMsg() {
+int	ClientHandler::receiveMsg(WebServ& context) {
 	size_t	bytes;
 	char	buffer[BUFFSIZE];
 
 	Logger::record(INFO) << "Receiving a msg from: " << _fd;
 	bytes = recv(_fd, buffer, BUFFSIZE, MSG_DONTWAIT);
-	if (bytes == 0) {
+	if (bytes <= 0) {
 		Logger::record(ERROR) << "Failed to read msg from client " << _fd << ". Closing connection...";
 		return CLT_MSG_ERR;
 	}
 
-	if (bytes < 0) {
-		if (errno != EAGAIN && errno != EWOULDBLOCK)
-			Logger::record(ERROR) << "Failed to read msg from client " << _fd << ". Closing connection...";
-		return CLT_MSG_ERR;
+	if (this->_state == READING_REQUEST) {
+		try {
+			_parser.consume(buffer, bytes);
+		}
+		catch (HttpParser::HttpRequestParsingException &e) {
+			Logger::record(ERROR) << e.what();
+			return CLT_MSG_ERR;
+		}
+        if (this->_parser.isComplete()) 
+        {
+        	if (_request) delete(_request);
+        	_request = _parser.generateRequest();
+        	//TODO choose specific config
+            RequestHandler handler(*(_hostConf[0]), *_request, context.getEpoll());
+            std::string contentType;
+            if (handler.setupUpload(contentType)) 
+            {
+                //try catch
+                this->_fileHandler = new FileHandler(*_request, handler.getLocation(), contentType);
+                this->_state = WRITING_BODY;
+                if (!this->_request->getBody().empty())
+                    this->_fileHandler->multiparse(this->_request->getBody());
+            } 
+            else
+                return build_response();
+        }
 	}
-
-	try {
-		_parser.consume(buffer, bytes);
-	}
-	catch (HttpParser::HttpRequestParsingException &e) {
-		Logger::record(ERROR) << e.what();
-	}
-
-	if (_parser.isComplete()) {
-		Logger::record(INFO) << "Message is complete !";
-		return CLT_MSG_END;
-	}
-	_lastAlive = std::time(NULL);
+	else if (this->_state == WRITING_BODY) 
+    {
+        std::vector<char> chunk(buffer, buffer + bytes);
+        this->_fileHandler->multiparse(chunk);
+        if (this->_fileHandler->getState() == FileHandler::END)
+            return build_response();
+    }
 	return CLT_MSG_RCV;
 }
 
-int	ClientHandler::sendMsg() {return 0;}
+int ClientHandler::build_response() 
+{
+    RequestHandler handler(this->_server, this->_parser.getRequest(), _epollFd);
+    this->_response = handler.handle_request();
+    this->_state = SENDING_RESPONSE;
+    return CLT_MSG_END;
+    //switch to epollout
+}
+
+void ClientHandler::handleWrite() 
+{
+    if (this->_state != SENDING_RESPONSE || !this->_response) 
+        return;
+    std::string &resStr = this->_response->get_full_response();
+    ssize_t sent = send(this->_fd, resStr.c_str() + this->_bytesSent, resStr.size() - this->_bytesSent, 0);
+    if (sent > 0) 
+    {
+        this->_bytesSent += sent;
+        if (this->_bytesSent >= resStr.size()) 
+            this->_state = END;
+    }
+    else if (sent == -1)
+        this->_state = END;
+}
 
 int	ClientHandler::handleEvent(uint32_t event, WebServ& context) {
+	_lastAlive = std::time(NULL);
+	context.getTimeList().splice(context.getTimeList().begin(), context.getTimeList(), timeout_it);
 	if (event == EPOLLIN) {
 		switch (receiveMsg()) {
 			case CLT_MSG_END:
-				context.getTimeList().splice(context.getTimeList().begin(), context.getTimeList(), timeout_it);
 				if (_request) delete _request;
 				_request = _parser.generateRequest();
 				break;
@@ -83,7 +124,7 @@ int	ClientHandler::handleEvent(uint32_t event, WebServ& context) {
 	ev.data.ptr = this;
 	epoll_ctl(context.getEpoll(), EPOLL_CTL_MOD, _fd, &ev);
 
-	if (event == EPOLLOUT) sendMsg();
+	if (event == EPOLLOUT) handleWrite();
 		return 0;
 }
 

@@ -2,15 +2,13 @@
 #define CLIENTHANDLER_HPP
 
 #include "AEventHandler.hpp"
+#include "FileHandler.hpp"
 #include "HttpParser.hpp"
 #include "ServerHandler.hpp"
 #include "ServerConfig.hpp"
+#include "Response.hpp"
 
 class ClientHandler : public AEventHandler {
-	private:
-		const std::vector<ServerConfig>*	_hostConf;
-		HttpParser		_parser;
-		HttpRequest*	_request;
 	public:
 		ClientHandler();
 		~ClientHandler();
@@ -18,8 +16,28 @@ class ClientHandler : public AEventHandler {
 
 		int	handleEvent(uint32_t event, WebServ& context);
 
-		int	receiveMsg();
-		int	sendMsg();
+		int		receiveMsg(WebServ& context);
+        int		build_response();
+        void    handleWrite();
+
+		enum ClientState 
+        {
+            READING_REQUEST,
+            WRITING_BODY,
+            PROCESSING,
+            SENDING_RESPONSE,
+            END
+        };
+
+	private:
+		const std::vector<ServerConfig>*	_hostConf;
+		HttpParser		_parser;
+		HttpRequest*	_request;
+		ClientState     _state;
+        Response        *_response;
+        FileHandler     *_fileHandler;
+        size_t          _bytesSent;
+
 };
 
 #endif
