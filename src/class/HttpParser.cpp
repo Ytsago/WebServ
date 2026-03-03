@@ -271,3 +271,7 @@ HttpRequest*	HttpParser::generateRequest() {
 HttpParser::~HttpParser() {
 
 }
+
+const char*	HttpParser::HttpRequestParsingException::what() const throw() {
+	return g_status_map[e_status].c_str(); 
+}

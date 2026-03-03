@@ -16,6 +16,7 @@
 #include "utils.hpp"
 
 static const std::string	location("./website/");
+const char* errInit = "Critical error happend during initialization.";
 
 sig_atomic_t running = 1;
 
@@ -28,7 +29,8 @@ void	sigHandler(int sig) {
 // }
 
 WebServ::WebServ(std::ostream& logStream, std::ostream& errorStream, ConfigParser &parser) : _epollFd(-1), logs(logStream), errorLogs(errorStream), global_conf(parser)  {
-
+	if ((_epollFd = epoll_create(1)) < 0)
+		throw std::runtime_error(errInit);
 }
 
 WebServ::WebServ(const WebServ &other) : _epollFd(other._epollFd), logs(other.logs), errorLogs(other.errorLogs), global_conf(other.global_conf) {
@@ -189,6 +191,14 @@ void	WebServ::serverSetup(ServerConfig &server) {
 	}
 	server.set_socket(serverFd);
 	logs << "[SETUP] success, socket is ready !" << std::endl;
+}
+
+void	WebServ::initServers(std::vector<ServerConfig>& servers) {
+	std::vector<ServerConfig>::iterator it;
+
+	for (it = servers.begin(); it != servers.end(); it++) {
+
+	}
 }
 
 bool	WebServ::run(const char *arg) {
