@@ -20,6 +20,7 @@ class WebServ {
 		bool	run(const char *arg);
 	private:
 		bool	checkConnection() const;
+		void	initServers(std::vector<ServerConfig>& servers);
 		bool	newConnection(struct epoll_event& ev, int serverFd) const ;
 		void	serverSetup(ServerConfig &server);
 		void	epoll_init(std::vector<ServerConfig> &server);
@@ -33,6 +34,9 @@ class WebServ {
 		std::ostream& logs;
 		std::ostream& errorLogs;
 		ConfigParser	&global_conf;
+
+		static const char*	errInit;
 };
+
 
 #endif

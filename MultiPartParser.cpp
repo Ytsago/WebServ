@@ -46,6 +46,7 @@ void	MultiPartParser::consume(const char* data, size_t len) {
 	Parser	endLine(StringParser("\r\n"));
 
 	Parser	parseLine = endLine.opt() + (boundSep + bound) + endLine;
+	Parser	finale = parseLine.action(ParserDataAction())
 	ParserResult<Token> res = parseLine.parse(data, len, 0);
 	if (!res.success)
 		throw std::runtime_error("BAD REQUEST");

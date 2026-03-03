@@ -21,7 +21,9 @@ class HttpParser {
 		class	HttpRequestParsingException: public std::exception {
 			public:
 				HttpRequestParsingException(int code) : e_status(code) {};
-			int	e_status;
+				int	e_status;
+				virtual const char*	what() const throw();
+			
 		};
 
 		enum	ParserState {REQUEST_LINE, HEADER, PROCESSHEADER, BODY, CHUNKEDBODY, COMPLETE};
