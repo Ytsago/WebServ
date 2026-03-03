@@ -1,9 +1,9 @@
 #include "WebServ.hpp"
 #include "AEventHandler.hpp"
+#include "ServerHandler.hpp"
 #include "Logger.hpp"
 #include <sys/epoll.h>
 #include <sys/signal.h>
-#include "color.h"
 
 bool	g_running = true;
 
@@ -27,7 +27,39 @@ WebServ::WebServ() {
 	Logger::record(SUCCESS) << "You can safely quit the program with CTRL + C";
 }
 
-void	WebServ::run() {
+void	WebServ::initHost() {
+	std::vector<ServerConfig>::iterator it = serversConfig.begin();
+	std::list<ServerHandler *> hosts;
+	std::list<ServerHandler *>::iterator ite;
+
+	for (; it != serversConfig.end(); it++) {
+		for (ite = hosts.begin(); ite != hosts.end(); ite++) {
+			if (ite.)
+		}
+	}
+}
+
+int	WebServ::setConfig(const char* arg) {
+	ConfigParser	parser;
+
+	Logger::record(SETUP) << "Reading config file: " << arg;
+	try {
+		parser.parse_file(arg);
+	}
+	catch (ConfigException &e) {
+		Logger::record(ERROR) << "Failed to load configuration file.\n"
+			<< e.what();
+		return CONFIGKO;
+	}
+	Logger::record(SUCCESS) << "Config file loaded !";
+	serversConfig = parser.get_servers();
+	return CONFIGOK;
+}
+
+void	WebServ::run(const char *arg) {
+	if (setConfig(arg) == CONFIGKO)
+		throw std::runtime_error("Temporary error may need to change it");
+
 
 }
 
@@ -37,6 +69,10 @@ void WebServ::removeHandler(AEventHandler* handler) {
 	timeout.erase(handler->getTimeoutIt());
 	registery.erase(handler->getSocket());
 	delete handler;
+}
+
+WebServ::~WebServ() {
+
 }
 
 int	WebServ::getEpoll() const {return epollFd;}
