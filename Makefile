@@ -25,7 +25,8 @@ CLASS = ConfigParser.cpp					LocationConfig.cpp			\
 		CgiHandler.cpp						RequestHandler.cpp			\
 		FileHandler.cpp						CgiContainer.cpp			\
 		StatusCode.cpp						HttpRequest.cpp				\
-		HttpParser.cpp						HeaderMap.cpp
+		HttpParser.cpp						HeaderMap.cpp				\
+		Logger.cpp
 
 INC = ConfigParser.hpp						LocationConfig.hpp			\
 	ServerConfig.hpp						ConfigException.hpp			\
@@ -36,7 +37,8 @@ INC = ConfigParser.hpp						LocationConfig.hpp			\
 	CgiHandler.hpp							RequestHandler.hpp			\
 	FileHandler.hpp							CgiContainer.hpp			\
 	StatusCode.hpp							HttpRequest.hpp				\
-	HttpParser.hpp							HeaderMap.hpp
+	HttpParser.hpp							HeaderMap.hpp				\
+	Logger.hpp								color.h
 
 # -----------SRCS-----------#
 

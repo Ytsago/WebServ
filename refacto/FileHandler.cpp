@@ -1,56 +1,34 @@
 #include "FileHandler.hpp"
-#include "ANetContainer.hpp"
 #include <algorithm>
-#include "unistd.h"
+#include <unistd.h>
 #include <fcntl.h>
+#include <iostream>
 
 FileHandler::FileHandler(HttpRequest &request, LocationConfig &location, std::string &content_type) :
 	_request(request),
 	_location(location),
 	_contentType(content_type),
-	_state(SEARCH_BOUNDARY)
+	_state(SEARCH_BOUNDARY),
+	_fileFd(-1)
 {
 	if (content_type.find("multipart/form-data") != std::string::npos)
 	{
-		std::string content_type = request.getHeader("Content-Type");
-		size_t pos = content_type.find("boundary=");
-		this->_boundary = "--" + content_type.substr(pos + 9);
-		this->_uploadPath = "./website/uploads/";
-		this->multiparse(request.getBody());
+		std::string h_content = request.getHeader("Content-Type");
+		size_t pos = h_content.find("boundary=");
+		if (pos != std::string::npos)
+			this->_boundary = "--" + h_content.substr(pos + 9);
 	}
+	// Le chemin d'upload devrait idéalement venir de la configuration de la Location
+	this->_uploadPath = "./website/uploads/"; 
 }
 
-FileHandler::FileHandler(const FileHandler &other) :
-	_request(other._request),
-	_location(other._location),
-	_contentType(other._contentType),
-	_boundary(other._boundary),
-	_filename(other._filename),
-	_uploadPath(other._uploadPath),
-	_buffer(other._buffer),
-	_state(other._state),
-	_fileFd(other._fileFd) {}
-
-FileHandler	&FileHandler::operator=(const FileHandler &other) 
+FileHandler::~FileHandler() 
 {
-	if (this != &other)
-	{
-		this->_request = other._request;
-		this->_location = other._location;
-		this->_contentType = other._contentType;
-		this->_boundary = other._boundary;
-		this->_filename = other._filename;
-		this->_uploadPath = other._uploadPath;
-		this->_buffer = other._buffer;
-		this->_state = other._state;
-		this->_fileFd = other._fileFd;
-	}
-	return (*this);
+	if (_fileFd != -1)
+		close(_fileFd);
 }
 
-FileHandler::~FileHandler() {}
-
-int	FileHandler::getState() {return (this->_state);}
+int	FileHandler::getState() { return (this->_state); }
 
 static std::string sanitize_filename(std::string filename)
 {

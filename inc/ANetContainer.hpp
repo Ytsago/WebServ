@@ -22,8 +22,8 @@ class ANetContainer {
 
 		int		getSocket() const;
 		void	setSocket(const int& socket);
-	private:
-		int	socket;
+	protected:
+		int	_fd;
 		std::ostream& logs;
 		std::ostream& errLogs;
 };

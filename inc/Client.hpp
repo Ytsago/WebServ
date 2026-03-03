@@ -5,6 +5,9 @@
 # include "HttpParser.hpp"
 # include "Response.hpp"
 # include "Request.hpp"
+# include "FileHandler.hpp"
+
+# define BUFFSIZE 4096
 
 class Client : public ANetContainer {
 	public:
@@ -21,6 +24,10 @@ class Client : public ANetContainer {
 	
 		void	setIndex(size_t newIndex);
 		void	setResponse(Response &response);
+
+		void	handleRead();
+		void	handleWrite();
+
 	private:
 		HttpParser	parser;
 		size_t		index;

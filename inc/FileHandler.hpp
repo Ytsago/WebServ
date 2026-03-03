@@ -13,15 +13,17 @@ class FileHandler
 		FileHandler(const FileHandler &other);
 		FileHandler &operator=(const FileHandler &other);
 
+		int		getState();
+
 		void	multiparse(const std::vector<char> &chunk);
 
-		enum	MultipartState 
-		{
-			SEARCH_BOUNDARY, 
-			PARSE_HEADERS, 
-			WRITING_DATA,
-			END
-		};
+			enum	MultipartState 
+			{
+				SEARCH_BOUNDARY, 
+				PARSE_HEADERS, 
+				WRITING_DATA,
+				END
+			};
 
 		private:
 
