@@ -10,7 +10,7 @@
 #include <map>
 #include <sstream>
 
-RequestHandler::RequestHandler(ServerConfig &server, HttpRequest &request, int &epollFd) :
+RequestHandler::RequestHandler(const ServerConfig &server, HttpRequest &request, int epollFd) :
 	_server(server),
 	_request(request),
 	_location(),
@@ -22,17 +22,17 @@ RequestHandler::RequestHandler(const RequestHandler &other) :
 	_location(other._location),
 	_epollFd(other._epollFd) {}
 
-RequestHandler	&RequestHandler::operator=(const RequestHandler &other) 
-{
-	if (this != &other)
-	{
-		this->_server = other._server;
-		this->_request = other._request;
-		this->_location = other._location;
-		this->_epollFd = other._epollFd;
-	}
-	return (*this);
-}
+// RequestHandler	&RequestHandler::operator=(const RequestHandler &other) 
+// {
+// 	if (this != &other)
+// 	{
+// 		this->_server = other._server;
+// 		this->_request = other._request;
+// 		this->_location = other._location;
+// 		this->_epollFd = other._epollFd;
+// 	}
+// 	return (*this);
+// }
 
 RequestHandler::~RequestHandler() {}
 

@@ -19,7 +19,7 @@ class CgiHandler
 		CgiHandler(const CgiHandler &other);
 		CgiHandler &operator=(const CgiHandler &other);
 
-		static void	execute_cgi(ServerConfig &server, HttpRequest &request, LocationConfig &location, std::string &path, int &epollFd);
+		static void	execute_cgi(const ServerConfig &server, HttpRequest &request, LocationConfig &location, std::string &path, int &epollFd);
 		int	handleEvent(uint32_t event, WebServ& context);
 
 };

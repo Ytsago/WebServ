@@ -51,7 +51,7 @@ int	ClientHandler::receiveMsg(WebServ& context) {
         	if (_request) delete(_request);
         	_request = _parser.generateRequest();
         	//TODO choose specific config
-            RequestHandler handler(*(_hostConf[0]), *_request, context.getEpoll());
+            RequestHandler handler((*_hostConf)[0], *_request, context.getEpoll());
             std::string contentType;
             if (handler.setupUpload(contentType)) 
             {
@@ -62,7 +62,7 @@ int	ClientHandler::receiveMsg(WebServ& context) {
                     this->_fileHandler->multiparse(this->_request->getBody());
             } 
             else
-                return build_response();
+                return build_response(context.getEpoll());
         }
 	}
 	else if (this->_state == WRITING_BODY) 
@@ -70,14 +70,14 @@ int	ClientHandler::receiveMsg(WebServ& context) {
         std::vector<char> chunk(buffer, buffer + bytes);
         this->_fileHandler->multiparse(chunk);
         if (this->_fileHandler->getState() == FileHandler::END)
-            return build_response();
+            return build_response(context.getEpoll());
     }
 	return CLT_MSG_RCV;
 }
 
-int ClientHandler::build_response() 
+int ClientHandler::build_response(int epollFd) 
 {
-    RequestHandler handler(this->_server, this->_parser.getRequest(), _epollFd);
+    RequestHandler handler((*_hostConf)[0], *_request, epollFd);
     this->_response = handler.handle_request();
     this->_state = SENDING_RESPONSE;
     return CLT_MSG_END;
@@ -104,7 +104,7 @@ int	ClientHandler::handleEvent(uint32_t event, WebServ& context) {
 	_lastAlive = std::time(NULL);
 	context.getTimeList().splice(context.getTimeList().begin(), context.getTimeList(), timeout_it);
 	if (event == EPOLLIN) {
-		switch (receiveMsg()) {
+		switch (receiveMsg(context)) {
 			case CLT_MSG_END:
 				if (_request) delete _request;
 				_request = _parser.generateRequest();

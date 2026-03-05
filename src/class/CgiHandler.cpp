@@ -39,7 +39,7 @@ static void	close_pipes(int *pipefd)
 	}
 }
 
-static std::map<std::string, std::string> build_env(ServerConfig &server, HttpRequest &request, LocationConfig &location, std::string &path)
+static std::map<std::string, std::string> build_env(const ServerConfig &server, HttpRequest &request, LocationConfig &location, std::string &path)
 {
 	std::map<std::string, std::string> env;
 	std::string	uri = request.getUri();
@@ -103,7 +103,7 @@ static char **map_to_envp(std::map<std::string, std::string> &env)
 	return (envp);
 }
 
-void	CgiHandler::execute_cgi(ServerConfig &server, HttpRequest &request, LocationConfig &location, std::string &path, int &epollFd)
+void	CgiHandler::execute_cgi(const ServerConfig &server, HttpRequest &request, LocationConfig &location, std::string &path, int &epollFd)
 {
 	std::map<std::string, std::string> env;
 	std::vector<char>	body = request.getBody();

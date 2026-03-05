@@ -17,7 +17,7 @@ class ClientHandler : public AEventHandler {
 		int	handleEvent(uint32_t event, WebServ& context);
 
 		int		receiveMsg(WebServ& context);
-        int		build_response();
+        int		build_response(int epollFd);
         void    handleWrite();
 
 		enum ClientState 

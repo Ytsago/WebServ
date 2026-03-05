@@ -13,17 +13,17 @@ class RequestHandler
 {
 	private:
 
-		ServerConfig	&_server;
-		HttpRequest		&_request;
-		LocationConfig	_location;
-		int				&_epollFd;
+		const ServerConfig	&_server;
+		HttpRequest			&_request;
+		LocationConfig		_location;
+		int					&_epollFd;
 
 	public:
 	
-		RequestHandler(ServerConfig &server, HttpRequest &request, int &epollFd);
+		RequestHandler(const ServerConfig &server, HttpRequest &request, int epollFd);
 		~RequestHandler();
 		RequestHandler(const RequestHandler &other);
-		RequestHandler &operator=(const RequestHandler &other);
+		// RequestHandler &operator=(const RequestHandler &other);
 	
 		Response		*handle_request();
 		Response		*build_get_response();
