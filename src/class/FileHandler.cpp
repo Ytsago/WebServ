@@ -5,12 +5,15 @@
 #include <iostream>
 
 FileHandler::FileHandler(HttpRequest &request, LocationConfig &location, std::string &content_type) :
-	_request(request),
-	_location(location),
-	_contentType(content_type),
+	// _request(request),
+	// _location(location),
+	// _contentType(content_type),
 	_state(SEARCH_BOUNDARY),
 	_fileFd(-1)
 {
+	(void)location;
+	(void)request;
+	(void)content_type;
 	if (content_type.find("multipart/form-data") != std::string::npos)
 	{
 		std::string h_content = request.getHeader("Content-Type");

@@ -36,6 +36,8 @@ RequestHandler::RequestHandler(const RequestHandler &other) :
 
 RequestHandler::~RequestHandler() {}
 
+LocationConfig	&RequestHandler::getLocation() {return (this->_location);}
+
 static bool check_path_correspondance(std::vector<std::string> &uri_blocks, std::vector<std::string> &loc_blocks, size_t block_nb)
 {
 	for (size_t i = 0; i < block_nb; i++)

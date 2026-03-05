@@ -27,9 +27,9 @@ class FileHandler
 
 	private:
 	
-		HttpRequest			&_request;
-		LocationConfig		&_location;
-		std::string			&_contentType;
+		// HttpRequest			&_request;
+		// LocationConfig		&_location;
+		// std::string			&_contentType;
 		std::string			_boundary;
 		std::string			_filename;
 		std::string			_uploadPath;

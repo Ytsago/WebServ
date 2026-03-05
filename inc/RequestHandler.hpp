@@ -16,7 +16,7 @@ class RequestHandler
 		const ServerConfig	&_server;
 		HttpRequest			&_request;
 		LocationConfig		_location;
-		int					&_epollFd;
+		int					_epollFd;
 
 	public:
 	
