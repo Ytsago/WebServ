@@ -9,7 +9,7 @@
 ClientHandler::ClientHandler(): AEventHandler(), _hostConf(NULL) {
 }
 
-ClientHandler::ClientHandler(WebServ& context, ServerHandler& host) {
+ClientHandler::ClientHandler(WebServ& context, ServerHandler& host) : _request(NULL), _state(READING_REQUEST) {
 	Logger::record(SETUP) << "Creating new client.";
 	if ((_fd = accept(host.getSocket(), NULL, NULL)) < 0) {
 		Logger::record(ERROR) << "Failed to accept connection on " << host.getSocket();
@@ -51,10 +51,12 @@ int	ClientHandler::receiveMsg(WebServ& context) {
         	if (_request) delete(_request);
         	_request = _parser.generateRequest();
         	//TODO choose specific config
+        	Logger::record(INFO) << "Processing request...";
             RequestHandler handler((*_hostConf)[0], *_request, context.getEpoll());
             std::string contentType;
             if (handler.setupUpload(contentType)) 
             {
+            	Logger::record(INFO) << "Downloading file...";
                 //try catch
                 this->_fileHandler = new FileHandler(*_request, handler.getLocation(), contentType);
                 this->_state = WRITING_BODY;
@@ -125,7 +127,10 @@ int	ClientHandler::handleEvent(uint32_t event, WebServ& context) {
 	epoll_ctl(context.getEpoll(), EPOLL_CTL_MOD, _fd, &ev);
 
 	if (event == EPOLLOUT) handleWrite();
-		return 0;
+	if (_state == END && this->_request->getHeaders()["Connection"] != "keep-alive")
+		return RM_CLT;
+	return CLT_MSG_END;
+
 }
 
 

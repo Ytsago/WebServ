@@ -96,6 +96,9 @@ void	WebServ::run(const char *arg) {
 				case CLT_MSG_ERR:
 					removeHandler(incoming);
 					break;
+				case RM_CLT:
+					removeHandler(incoming);
+					break;
 				default:
 					break ;
 			}
@@ -117,7 +120,9 @@ WebServ::~WebServ() {
 	std::map<int, AEventHandler*>::iterator it = registery.begin();
 
 	for (; it != registery.end(); it++)
-		removeHandler(it->second);
+		delete it->second;
+	if (epollFd > 0)
+		close(epollFd);
 }
 
 int	WebServ::getEpoll() const {return epollFd;}

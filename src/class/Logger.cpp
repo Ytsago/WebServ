@@ -56,6 +56,9 @@ LogLine	Logger::record(logLevel level) {
 	return LogLine(log(level));
 }
 
+void	Logger::upColor() {Logger::getInstance().color = true;}
+void	Logger::downColor() {Logger::getInstance().color = false;}
+
 Logger::~Logger() {
 
 }

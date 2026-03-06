@@ -4,7 +4,7 @@
 #include <cstddef>
 #include "utils.hpp"
 
-HttpParser::HttpParser() : m_state(REQUEST_LINE), m_type(NONE), m_cursor(0), m_bodySize(0) {
+HttpParser::HttpParser() : m_state(REQUEST_LINE), m_type(NONE), m_cursor(0), m_bodySize(0), m_readBuf() {
 	m_readBuf.reserve(8192);
 	m_headers.reserve(20);
 }

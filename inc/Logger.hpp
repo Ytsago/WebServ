@@ -45,6 +45,8 @@ class Logger {
 		static std::ostream&	log(logLevel level);
 		static LogLine	record(logLevel level);
 		static bool	getColor();
+		static void	upColor();
+		static void	downColor();
 };
 
 #endif
