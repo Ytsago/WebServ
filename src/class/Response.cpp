@@ -84,10 +84,10 @@ void	Response::build_header(size_t body_size, std::string path, bool connection)
 
 	str_size = int_to_string(body_size);
 	buffer += 
-	"Content-Length: " + str_size + '\n' +
-	"Content-Type: " + get_mime_type(path) + '\n' +
-	"Date: " + get_http_date() + '\n' +
-	"Connection: " + (connection ? "keep-alive" : "close") + '\n' +
+	"Content-Length: " + str_size + "\r\n" +
+	"Content-Type: " + get_mime_type(path) + "\r\n" +
+	"Date: " + get_http_date() + "\r\n" +
+	"Connection: " + (connection ? "keep-alive" : "close") +
 	"\r\n\r\n";
 	this->_full_response.insert(this->_full_response.end(), buffer.begin(), buffer.end());
 }

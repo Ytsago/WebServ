@@ -125,6 +125,7 @@ int	CgiContainer::get_type() const
 	return (CGI);
 }
 #include "CgiHandler.hpp"
+#include "Logger.hpp"
 #include "CgiContainer.hpp"
 #include <sys/epoll.h>
 #include <unistd.h>
@@ -326,15 +327,17 @@ int	ClientHandler::receiveMsg(WebServ& context) {
 			Logger::record(ERROR) << e.what();
 			return CLT_MSG_ERR;
 		}
-        if (this->_parser.isComplete()) 
+      if (this->_parser.isComplete()) 
         {
         	if (_request) delete(_request);
         	_request = _parser.generateRequest();
         	//TODO choose specific config
+        	Logger::record(INFO) << "Processing request...";
             RequestHandler handler((*_hostConf)[0], *_request, context.getEpoll());
             std::string contentType;
             if (handler.setupUpload(contentType)) 
             {
+            	Logger::record(INFO) << "Downloading file...";
                 //try catch
                 this->_fileHandler = new FileHandler(*_request, handler.getLocation(), contentType);
                 this->_state = WRITING_BODY;
@@ -368,16 +371,22 @@ void ClientHandler::handleWrite()
 {
     if (this->_state != SENDING_RESPONSE || !this->_response) 
         return;
-    std::string &resStr = this->_response->get_full_response();
-    ssize_t sent = send(this->_fd, resStr.c_str() + this->_bytesSent, resStr.size() - this->_bytesSent, 0);
+    byteVector &resStr = this->_response->get_full_response();
+    ssize_t sent = send(this->_fd, resStr.data() + this->_bytesSent, resStr.size() - this->_bytesSent, 0);
     if (sent > 0) 
     {
         this->_bytesSent += sent;
-        if (this->_bytesSent >= resStr.size()) 
+        if (this->_bytesSent >= resStr.size())
+		{
             this->_state = END;
+			this->_bytesSent = 0;
+		}
     }
     else if (sent == -1)
+	{
         this->_state = END;
+		this->_bytesSent = 0;
+	}
 }
 
 int	ClientHandler::handleEvent(uint32_t event, WebServ& context) {
@@ -405,7 +414,10 @@ int	ClientHandler::handleEvent(uint32_t event, WebServ& context) {
 	epoll_ctl(context.getEpoll(), EPOLL_CTL_MOD, _fd, &ev);
 
 	if (event == EPOLLOUT) handleWrite();
-		return 0;
+	if (_state == END && this->_request->getHeaders()["Connection"] != "keep-alive")
+		return RM_CLT;
+	return CLT_MSG_END;
+
 }
 
 
@@ -1305,6 +1317,9 @@ LogLine	Logger::record(logLevel level) {
 	return LogLine(log(level));
 }
 
+void	Logger::upColor() {Logger::getInstance().color = true;}
+void	Logger::downColor() {Logger::getInstance().color = false;}
+
 Logger::~Logger() {
 
 }
@@ -1466,6 +1481,7 @@ std::ostream&	operator<<(std::ostream& out, const Request& el) {
 #include "StatusCode.hpp"
 #include "FileHandler.hpp"
 #include "utils.hpp"
+#include "Logger.hpp"
 #include <unistd.h>
 #include <sys/epoll.h>
 #include <algorithm>
@@ -1626,14 +1642,16 @@ Response* RequestHandler::build_get_response()
 	path = this->get_file_path();
 	if (!check_if_method_allowed(this->_location, "GET"))
 		return new Response(METHOD_NOT_ALLOWED);
-	if (get_cgi_ext(ext))
+	if (this->get_cgi_ext(ext))
 	{
 		CgiHandler::execute_cgi(this->_server, this->_request, this->_location, path, this->_epollFd);
 		return new Response(OK, byteVector(), path, true);
 	}
 	file = GetFile(path);
-	if (file.empty() && access(path.c_str(), F_OK) != 0)
+	if (file.empty() || access(path.c_str(), F_OK) != 0)
 		return new Response(NOT_FOUND);
+	// if (ext == ".png")
+	// 	Logger::record(ERROR) << file.data();
 	return new Response(OK, file, path, true);
 }
 
@@ -1690,11 +1708,18 @@ bool	RequestHandler::get_cgi_ext(std::string &ext)
 {
 	std::string	uri = this->_request.getUri();
 	size_t		dot_pos = uri.find_last_of('.');
+	static std::string exts[] = {".php", ".py"};
+
 	if (dot_pos == std::string::npos)
 		return false;
 	size_t query_pos = uri.find('?', dot_pos);
 	ext = (query_pos == std::string::npos) ? uri.substr(dot_pos) : uri.substr(dot_pos, query_pos - dot_pos);
-	return true;
+	for (size_t i = 0; i < sizeof(exts) / sizeof(std::string); i++)
+	{
+		if (ext == exts[i])
+			return true;
+	}
+	return false;
 }#include "Response.hpp"
 #include "StatusCode.hpp"
 #include "CgiHandler.hpp"
@@ -1724,7 +1749,7 @@ Response	&Response::operator=(const Response &other) {
 
 Response::~Response() {}
 
-std::string	&Response::get_full_response() {return this->_full_response;}
+byteVector	&Response::get_full_response() {return this->_full_response;}
 
 void	Response::build_entry_line(int code, std::string status)
 {
@@ -1738,7 +1763,7 @@ void	Response::build_entry_line(int code, std::string status)
 	entry_line.insert(entry_line.end(), str_code.begin(), str_code.end());
 	entry_line.insert(entry_line.end(), status.begin(), status.end());
 	entry_line.insert(entry_line.end(), delimiter.begin(), delimiter.end());
-	this->_full_response = entry_line;
+	this->_full_response.insert(this->_full_response.end(), entry_line.begin(), entry_line.end());
 }
 
 static std::string	get_mime_type(std::string &path)
@@ -1777,16 +1802,16 @@ static std::string	get_http_date()
 void	Response::build_header(size_t body_size, std::string path, bool connection)
 {
 	std::string			str_size;
-	std::ostringstream	buffer;
+	std::string	buffer;
 
 	str_size = int_to_string(body_size);
-	buffer << 
-	"Content-Length: " << str_size << '\n' <<
-	"Content-Type: " << get_mime_type(path) << '\n' <<
-	"Date: " << get_http_date() << '\n' <<
-	"Connection: " << (connection ? "keep-alive" : "close") << '\n' <<
+	buffer += 
+	"Content-Length: " + str_size + '\n' +
+	"Content-Type: " + get_mime_type(path) + '\n' +
+	"Date: " + get_http_date() + '\n' +
+	"Connection: " + (connection ? "keep-alive" : "close") + '\n' +
 	"\r\n\r\n";
-	this->_full_response += buffer.str();
+	this->_full_response.insert(this->_full_response.end(), buffer.begin(), buffer.end());
 }
 
 #include "Sender.hpp"
@@ -2089,6 +2114,9 @@ void	WebServ::run(const char *arg) {
 			AEventHandler* incoming = reinterpret_cast<AEventHandler*>(events[i].data.ptr);
 			switch (incoming->handleEvent(events[i].events, *this)) {
 				case CLT_MSG_ERR:
+					removeHandler(incoming);
+					break;
+				case RM_CLT:
 					removeHandler(incoming);
 					break;
 				default:

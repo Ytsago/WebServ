@@ -25,6 +25,7 @@ ClientHandler::ClientHandler(WebServ& context, ServerHandler& host) : _request(N
 	timeout_it = context.getTimeList().begin();
 	_hostConf = &host.getConfig();
 	_lastAlive = std::time(NULL);
+	_bytesSent = 0;
 }
 
 int	ClientHandler::receiveMsg(WebServ& context) {
@@ -91,21 +92,27 @@ void ClientHandler::handleWrite()
     if (this->_state != SENDING_RESPONSE || !this->_response) 
         return;
     byteVector &resStr = this->_response->get_full_response();
-    ssize_t sent = send(this->_fd, resStr.data() + this->_bytesSent, resStr.size() - this->_bytesSent, 0);
-    if (sent > 0) 
-    {
-        this->_bytesSent += sent;
-        if (this->_bytesSent >= resStr.size())
+		//   if (resStr.size() == _bytesSent || resStr.size()) {
+		//   	this->_state = END;
+		// this->_bytesSent = 0;
+		//   }
+    // else {
+    	ssize_t sent = send(this->_fd, resStr.data() + this->_bytesSent, resStr.size() - this->_bytesSent, 0);
+    	if (sent > 0) 
+    	{
+        	this->_bytesSent += sent;
+        	if (this->_bytesSent >= resStr.size())
+			{
+            	this->_state = END;
+				this->_bytesSent = 0;
+			}
+    	}
+    	else if (sent == -1)
 		{
-            this->_state = END;
+        	this->_state = END;
 			this->_bytesSent = 0;
 		}
-    }
-    else if (sent == -1)
-	{
-        this->_state = END;
-		this->_bytesSent = 0;
-	}
+	// }
 }
 
 int	ClientHandler::handleEvent(uint32_t event, WebServ& context) {
@@ -135,8 +142,8 @@ int	ClientHandler::handleEvent(uint32_t event, WebServ& context) {
 	if (event == EPOLLOUT) handleWrite();
 	if (_state == END && this->_request->getHeaders()["Connection"] != "keep-alive")
 		return RM_CLT;
+	if (_state == END) delete _response;
 	return CLT_MSG_END;
-
 }
 
 

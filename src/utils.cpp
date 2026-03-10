@@ -16,13 +16,13 @@ byteVector	GetFile(std::string path) {
 	std::ifstream	file(path.c_str(), std::ios::binary | std::ios::ate);
 
 	//Get file size
-	ssize_t	size = file.tellg();
+	std::streamsize size = file.tellg();
 
 
 	//Return to the start
 	file.seekg(std::ios::beg);
 
-	if (size < 1)
+	if (size == -1)
 		return byteVector();
 	byteVector	buffer(size);
 	if (file.read(buffer.data(), size)) {
