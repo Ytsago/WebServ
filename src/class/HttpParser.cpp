@@ -1,6 +1,7 @@
 #include "HttpParser.hpp"
 #include "StatusCode.hpp"
 #include <algorithm>
+#include "Logger.hpp"
 #include <cstddef>
 #include "utils.hpp"
 
@@ -69,16 +70,20 @@ bool	HttpParser::parseRequestLine() {
 void	HttpParser::parseMediaType(std::string& rawMedia) {
 	size_t	slashPos = rawMedia.find('/');
 
-	if (slashPos == std::string::npos || slashPos == rawMedia.size() -1 || slashPos == 0)
+	if (slashPos == std::string::npos || slashPos == rawMedia.size() -1 || slashPos == 0) {
+		Logger::record(ERROR) << "1";
 		throw HttpRequestParsingException(BAD_REQUEST);
+	}
 
 	std::string	media = rawMedia.substr(0, slashPos);
 	m_subtype = rawMedia.substr(slashPos +1);
 	trim(media);
 	trim(m_subtype);
 
-	if (m_subtype.empty())
+	if (m_subtype.empty()) {
+		Logger::record(ERROR) << "2";
 		throw HttpRequestParsingException(BAD_REQUEST);
+	}
 	if (media == "text") m_type = TEXT;
 	else if (media == "application") m_type = APPLICATION;
 	else if (media == "multipart") m_type = MULTIPART;
@@ -116,8 +121,10 @@ void	HttpParser::processHeader() {
 		char*	endptr;
 		long	val;
 		val = std::strtol(header.c_str(), &endptr, 10);
-		if (*endptr != '\0' || val < 0 || val > MAX_BODY_SIZE)
+		if (*endptr != '\0' || val < 0 || val > MAX_BODY_SIZE) {
+			Logger::record(ERROR) << "3";
 			throw HttpRequestParsingException(BAD_REQUEST);
+		}
 		m_contentLength = static_cast<size_t>(val);
 		if (m_contentLength > 0) {
 			m_state = BODY;
@@ -137,8 +144,10 @@ void	HttpParser::processHeader() {
 		strLower(media); parseMediaType(media);
 		switch (m_type) {
 			case TEXT:
-				if (m_subtype.empty())
+				if (m_subtype.empty()) {
+					Logger::record(ERROR) << "4";
 					throw HttpRequestParsingException(BAD_REQUEST);
+				}
 				break;
 			case APPLICATION:
 				if (m_subtype == "x-www-form-urlencoded") {
@@ -153,8 +162,6 @@ void	HttpParser::processHeader() {
 			case MULTIPART:
 				if (m_subtype != "form-data")
 					throw HttpRequestParsingException(UNSUPORTED_MEDIA_TYPE);
-				m_boundary = extractBoundary(header);
-				if (m_boundary.empty()) throw HttpRequestParsingException(BAD_REQUEST);
 				break ;
 			default:
 				throw HttpRequestParsingException(UNSUPORTED_MEDIA_TYPE);
@@ -178,12 +185,16 @@ bool	HttpParser::parseHeader() {
 	}
 
 	std::vector<char>::iterator	itSeparator = std::find(itStart, itEndLine, ':');
-	if (itSeparator == itEndLine)
+	if (itSeparator == itEndLine) {
+		Logger::record(ERROR) << "5";
 		throw HttpRequestParsingException(BAD_REQUEST);
+	}
 
 	std::string	key(itStart, itSeparator);
-	if (key.empty())
+	if (key.empty()) {
+		Logger::record(ERROR) << "6";
 		throw HttpRequestParsingException(BAD_REQUEST);
+	}
 
 	std::string	value(itSeparator + 1, itEndLine);
 	size_t	firstSpace = value.find_first_not_of(' ');

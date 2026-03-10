@@ -1,4 +1,5 @@
 #include "FileHandler.hpp"
+#include "Logger.hpp"
 #include <algorithm>
 #include <unistd.h>
 #include <fcntl.h>
@@ -68,6 +69,7 @@ static std::string extract_filename(std::vector<char>::iterator begin, std::vect
 // 	std::cout << "+++++++++++++++++++++\n";
 // }
 
+//TODO check if FD > 0
 void FileHandler::multiparse(const std::vector<char> &chunk) 
 {
 	this->_buffer.insert(this->_buffer.end(), chunk.begin(), chunk.end());
@@ -89,8 +91,8 @@ void FileHandler::multiparse(const std::vector<char> &chunk)
 				break;
 			this->_filename = extract_filename(this->_buffer.begin(), it);
 			this->_filename = this->_uploadPath + this->_filename;
-			// std::cout << this->_filename << '\n';
 			this->_fileFd = open(this->_filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+			Logger::record(INFO) << "File: " << _filename.c_str() << " fd: " << _fileFd;
 			this->_buffer.erase(this->_buffer.begin(), it + 4);
 			this->_state = WRITING_DATA;
 		}

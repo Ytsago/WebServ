@@ -6,10 +6,10 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-ClientHandler::ClientHandler(): AEventHandler(), _hostConf(NULL) {
+ClientHandler::ClientHandler(): AEventHandler(), _hostConf(NULL), _response(NULL) {
 }
 
-ClientHandler::ClientHandler(WebServ& context, ServerHandler& host) : _request(NULL), _state(READING_REQUEST) {
+ClientHandler::ClientHandler(WebServ& context, ServerHandler& host) : _request(NULL), _state(READING_REQUEST), _response(NULL) {
 	Logger::record(SETUP) << "Creating new client.";
 	if ((_fd = accept(host.getSocket(), NULL, NULL)) < 0) {
 		Logger::record(ERROR) << "Failed to accept connection on " << host.getSocket();
@@ -81,6 +81,7 @@ int	ClientHandler::receiveMsg(WebServ& context) {
 int ClientHandler::build_response(int epollFd) 
 {
     RequestHandler handler((*_hostConf)[0], *_request, epollFd);
+    if (_response) delete _response;
     this->_response = handler.handle_request();
     this->_state = SENDING_RESPONSE;
     return CLT_MSG_END;
@@ -142,7 +143,6 @@ int	ClientHandler::handleEvent(uint32_t event, WebServ& context) {
 	if (event == EPOLLOUT) handleWrite();
 	if (_state == END && this->_request->getHeaders()["Connection"] != "keep-alive")
 		return RM_CLT;
-	if (_state == END) delete _response;
 	return CLT_MSG_END;
 }
 
@@ -150,4 +150,5 @@ int	ClientHandler::handleEvent(uint32_t event, WebServ& context) {
 
 ClientHandler::~ClientHandler() {
 	if (_request) delete _request;
+	if (_response) delete _response;
 }

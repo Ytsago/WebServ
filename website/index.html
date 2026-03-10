@@ -42,12 +42,15 @@
 				</p>
 			</div>
 		</div>
-		<form action="./" method="POST">
+		<form method="post" enctype="multipart/form-data">
 			<div>
-				<label for="say"> What do you want to say ?</label>
-				<input name="say" id="say" value="hi" />
+				<label for="file">Choose file to upload</label>
+				<input type="file" id="file" name="file" multiple />
 			</div>
-		</form>
+			<div>
+				<button>Submit</button>
+			</div>
+		</form>	<input type="file"/>
 		<div class="footer">
 			<h4>Hehe this is my creation !</h4>
 			<p>Please feel from to give me feadback !<br>

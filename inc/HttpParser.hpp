@@ -5,7 +5,7 @@
 #include "HeaderMap.hpp"
 #include "StatusCode.hpp"
 
-# define MAX_BODY_SIZE 1000000 //Has to depend on the host server
+# define MAX_BODY_SIZE 100000000 //Has to depend on the host server
 
 class HttpParser {
 	public:
