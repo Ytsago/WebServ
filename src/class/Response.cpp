@@ -27,7 +27,7 @@ Response	&Response::operator=(const Response &other) {
 
 Response::~Response() {}
 
-std::string	&Response::get_full_response() {return this->_full_response;}
+byteVector	&Response::get_full_response() {return this->_full_response;}
 
 void	Response::build_entry_line(int code, std::string status)
 {
@@ -41,7 +41,7 @@ void	Response::build_entry_line(int code, std::string status)
 	entry_line.insert(entry_line.end(), str_code.begin(), str_code.end());
 	entry_line.insert(entry_line.end(), status.begin(), status.end());
 	entry_line.insert(entry_line.end(), delimiter.begin(), delimiter.end());
-	this->_full_response = entry_line;
+	this->_full_response.insert(this->_full_response.end(), entry_line.begin(), entry_line.end());
 }
 
 static std::string	get_mime_type(std::string &path)
@@ -80,15 +80,15 @@ static std::string	get_http_date()
 void	Response::build_header(size_t body_size, std::string path, bool connection)
 {
 	std::string			str_size;
-	std::ostringstream	buffer;
+	std::string	buffer;
 
 	str_size = int_to_string(body_size);
-	buffer << 
-	"Content-Length: " << str_size << '\n' <<
-	"Content-Type: " << get_mime_type(path) << '\n' <<
-	"Date: " << get_http_date() << '\n' <<
-	"Connection: " << (connection ? "keep-alive" : "close") << '\n' <<
+	buffer += 
+	"Content-Length: " + str_size + '\n' +
+	"Content-Type: " + get_mime_type(path) + '\n' +
+	"Date: " + get_http_date() + '\n' +
+	"Connection: " + (connection ? "keep-alive" : "close") + '\n' +
 	"\r\n\r\n";
-	this->_full_response += buffer.str();
+	this->_full_response.insert(this->_full_response.end(), buffer.begin(), buffer.end());
 }
 

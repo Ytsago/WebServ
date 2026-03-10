@@ -4,6 +4,7 @@
 #include "StatusCode.hpp"
 #include "FileHandler.hpp"
 #include "utils.hpp"
+#include "Logger.hpp"
 #include <unistd.h>
 #include <sys/epoll.h>
 #include <algorithm>
@@ -164,14 +165,16 @@ Response* RequestHandler::build_get_response()
 	path = this->get_file_path();
 	if (!check_if_method_allowed(this->_location, "GET"))
 		return new Response(METHOD_NOT_ALLOWED);
-	if (get_cgi_ext(ext))
+	if (this->get_cgi_ext(ext))
 	{
 		CgiHandler::execute_cgi(this->_server, this->_request, this->_location, path, this->_epollFd);
 		return new Response(OK, byteVector(), path, true);
 	}
 	file = GetFile(path);
-	if (file.empty() && access(path.c_str(), F_OK) != 0)
+	if (file.empty() || access(path.c_str(), F_OK) != 0)
 		return new Response(NOT_FOUND);
+	// if (ext == ".png")
+	// 	Logger::record(ERROR) << file.data();
 	return new Response(OK, file, path, true);
 }
 
@@ -228,9 +231,16 @@ bool	RequestHandler::get_cgi_ext(std::string &ext)
 {
 	std::string	uri = this->_request.getUri();
 	size_t		dot_pos = uri.find_last_of('.');
+	static std::string exts[] = {".php", ".py"};
+
 	if (dot_pos == std::string::npos)
 		return false;
 	size_t query_pos = uri.find('?', dot_pos);
 	ext = (query_pos == std::string::npos) ? uri.substr(dot_pos) : uri.substr(dot_pos, query_pos - dot_pos);
-	return true;
+	for (size_t i = 0; i < sizeof(exts) / sizeof(std::string); i++)
+	{
+		if (ext == exts[i])
+			return true;
+	}
+	return false;
 }

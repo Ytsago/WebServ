@@ -46,7 +46,7 @@ int	ClientHandler::receiveMsg(WebServ& context) {
 			Logger::record(ERROR) << e.what();
 			return CLT_MSG_ERR;
 		}
-        if (this->_parser.isComplete()) 
+      if (this->_parser.isComplete()) 
         {
         	if (_request) delete(_request);
         	_request = _parser.generateRequest();
@@ -90,16 +90,22 @@ void ClientHandler::handleWrite()
 {
     if (this->_state != SENDING_RESPONSE || !this->_response) 
         return;
-    std::string &resStr = this->_response->get_full_response();
-    ssize_t sent = send(this->_fd, resStr.c_str() + this->_bytesSent, resStr.size() - this->_bytesSent, 0);
+    byteVector &resStr = this->_response->get_full_response();
+    ssize_t sent = send(this->_fd, resStr.data() + this->_bytesSent, resStr.size() - this->_bytesSent, 0);
     if (sent > 0) 
     {
         this->_bytesSent += sent;
-        if (this->_bytesSent >= resStr.size()) 
+        if (this->_bytesSent >= resStr.size())
+		{
             this->_state = END;
+			this->_bytesSent = 0;
+		}
     }
     else if (sent == -1)
+	{
         this->_state = END;
+		this->_bytesSent = 0;
+	}
 }
 
 int	ClientHandler::handleEvent(uint32_t event, WebServ& context) {

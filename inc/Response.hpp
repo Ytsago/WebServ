@@ -14,7 +14,7 @@ class Response
 {
 	private:
 
-		std::string	_full_response;
+		byteVector	_full_response;
 		size_t		cursor;
 
 	public:
@@ -24,7 +24,7 @@ class Response
 		Response(const Response &other);
 		Response &operator=(const Response &other);
 
-		std::string	&get_full_response();
+		byteVector	&get_full_response();
 	
 		void	build_entry_line(int code, std::string status);
 		void	build_header(size_t body_size, std::string path, bool connection);

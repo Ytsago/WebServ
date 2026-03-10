@@ -1,4 +1,5 @@
 #include "CgiHandler.hpp"
+#include "Logger.hpp"
 #include "CgiContainer.hpp"
 #include <sys/epoll.h>
 #include <unistd.h>
