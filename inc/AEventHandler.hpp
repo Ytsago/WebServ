@@ -18,6 +18,15 @@ enum	e_retState {
 	RM_CLT,
 	EPOLL_CTL_OK,
 	EPOLL_CTL_FAIL,
+	CGI_OK,
+	CGI_WRITE_KO,
+	CGI_WRITE_OK,
+	CGI_WRITE_END,
+	CGI_READ_OK,
+	CGI_READ_KO,
+	CGI_READ_END,
+	CGI_KO,
+	CGI_END,
 };
 
 class AEventHandler {
@@ -27,7 +36,7 @@ class AEventHandler {
 		std::list<AEventHandler*>::iterator	timeout_it;
 
 		void	setSocket(int fd);
-		int	addToEpoll(WebServ& context, int event);
+		int	addToEpoll(int epollFd, int event);
 	public:
 		class HandlerException : public std::exception {
 			private:
@@ -44,6 +53,7 @@ class AEventHandler {
 		int	getSocket() const;
 		const time_t&	getTimeout() const;
 		std::list<AEventHandler*>::iterator	getTimeoutIt();	
+		void	setTimeoutIt(std::list<AEventHandler*>::iterator& it);
 };
 
 #endif

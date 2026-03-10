@@ -38,6 +38,7 @@ RequestHandler::RequestHandler(const RequestHandler &other) :
 RequestHandler::~RequestHandler() {}
 
 LocationConfig	&RequestHandler::getLocation() {return (this->_location);}
+const ServerConfig	&RequestHandler::getServer() {return (this->_server);}
 
 static bool check_path_correspondance(std::vector<std::string> &uri_blocks, std::vector<std::string> &loc_blocks, size_t block_nb)
 {
@@ -166,10 +167,7 @@ Response* RequestHandler::build_get_response()
 	if (!check_if_method_allowed(this->_location, "GET"))
 		return new Response(METHOD_NOT_ALLOWED);
 	if (this->get_cgi_ext(ext))
-	{
-		CgiHandler::execute_cgi(this->_server, this->_request, this->_location, path, this->_epollFd);
 		return new Response(OK, byteVector(), path, true);
-	}
 	file = GetFile(path);
 	if (file.empty() || access(path.c_str(), F_OK) != 0)
 		return new Response(NOT_FOUND);
@@ -189,10 +187,7 @@ Response* RequestHandler::build_post_response()
 	if (!check_if_method_allowed(this->_location, "POST"))
 		return new Response(METHOD_NOT_ALLOWED);
 	if (this->get_cgi_ext(ext))
-	{
-		CgiHandler::execute_cgi(this->_server, this->_request, this->_location, path, this->_epollFd);
 		return new Response(OK, emptyBody, path, true);
-	}
 	return new Response(CREATED, emptyBody, path, true);
 }
 

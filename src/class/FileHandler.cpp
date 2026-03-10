@@ -5,6 +5,8 @@
 #include <fcntl.h>
 #include <iostream>
 
+FileHandler::FileHandler() : _fileFd(-1) {}
+
 FileHandler::FileHandler(HttpRequest &request, LocationConfig &location, std::string &content_type) :
 	// _request(request),
 	// _location(location),
@@ -24,6 +26,18 @@ FileHandler::FileHandler(HttpRequest &request, LocationConfig &location, std::st
 	}
 	// Le chemin d'upload devrait idéalement venir de la configuration de la Location
 	this->_uploadPath = "./website/uploads/"; 
+}
+
+FileHandler&	FileHandler::operator=(const FileHandler& other) {
+	if (this != &other) {
+		_state = other._state;
+		_fileFd = other._fileFd;
+		_boundary = other._boundary;
+		_buffer = other._buffer;
+		_filename = other._filename;
+		_uploadPath = other._uploadPath;
+	}
+	return (*this);
 }
 
 FileHandler::~FileHandler() 

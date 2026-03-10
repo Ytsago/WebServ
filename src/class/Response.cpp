@@ -77,6 +77,7 @@ static std::string	get_http_date()
 	return (std::string(buffer));
 }
 
+//TODO When another status code than 200 is send mime type may be irrevalent
 void	Response::build_header(size_t body_size, std::string path, bool connection)
 {
 	std::string			str_size;

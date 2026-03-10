@@ -36,6 +36,7 @@ class RequestHandler
 		std::string		get_file_path();
 		void			find_corresponding_location();
 		LocationConfig&	getLocation();
+		const ServerConfig	&getServer();
 };
 
 #endif

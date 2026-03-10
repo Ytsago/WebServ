@@ -1,6 +1,7 @@
 #include "CgiHandler.hpp"
 #include "Logger.hpp"
 #include "CgiContainer.hpp"
+#include <fcntl.h>
 #include <sys/epoll.h>
 #include <unistd.h>
 
@@ -104,7 +105,7 @@ static char **map_to_envp(std::map<std::string, std::string> &env)
 	return (envp);
 }
 
-void	CgiHandler::execute_cgi(const ServerConfig &server, HttpRequest &request, LocationConfig &location, std::string &path, int &epollFd)
+t_pipe CgiHandler::execute_cgi(const ServerConfig &server, HttpRequest &request, LocationConfig &location, std::string &path)
 {
 	std::map<std::string, std::string> env;
 	std::vector<char>	body = request.getBody();
@@ -130,7 +131,6 @@ void	CgiHandler::execute_cgi(const ServerConfig &server, HttpRequest &request, L
 	*		epoll ctl pipefd[2] on EPOLLIN
 	*/
 	// AEventHandler	*newCgi = new CgiContainer;
-	(void) epollFd;
 	// add_to_epoll(epollFd, pipefd[1], EPOLLOUT, newCgi);
 	// add_to_epoll(epollFd, pipefd[2], EPOLLIN, newCgi);
 	pid = fork();
@@ -144,12 +144,14 @@ void	CgiHandler::execute_cgi(const ServerConfig &server, HttpRequest &request, L
 		dup_fd(pipefd[3], STDOUT_FILENO);
 		close_pipes(pipefd);
 		char **argv = new char*[2];
-		std::copy(path.begin(), path.end(), argv[0]);
+		argv[0] = const_cast<char *>(path.c_str());
 		argv[1] = NULL;
-		execve(path.c_str(), argv, envp);
+		execve(location.get_cgi_path().c_str(), argv, envp);
 		clear_envp(envp);
 	}
-	close_pipes(pipefd);
+	close (pipefd[0]);
+	close (pipefd[3]);
+	return (t_pipe) {pipefd[1], pipefd[2]};
 }
 
 

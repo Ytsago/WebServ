@@ -5,13 +5,13 @@
 
 AEventHandler::AEventHandler(): _fd(-1) {}
 
-int	AEventHandler::addToEpoll(WebServ& context, int event) {
+int	AEventHandler::addToEpoll(int epollFd, int event) {
 	epoll_event	ev;
 
 	Logger::record(SETUP) << "Adding " << _fd << "to epoll";
 	ev.events = event, ev.data.ptr = this;
-	if (epoll_ctl(context.getEpoll(), EPOLL_CTL_ADD, _fd, &ev) < 0) {
-		Logger::record(ERROR) << "Failed to add event to epoll";
+	if (epoll_ctl(epollFd, EPOLL_CTL_ADD, _fd, &ev) < 0) {
+		Logger::record(ERROR) << "Failed to add event to epoll: " << _fd;
 		close(_fd);
 		_fd = -1;
 		return EPOLL_CTL_FAIL;
@@ -28,6 +28,7 @@ std::list<AEventHandler*>::iterator	AEventHandler::getTimeoutIt() {return timeou
 const time_t&	AEventHandler::getTimeout() const {return _lastAlive;}
 
 void	AEventHandler::setSocket(int fd) {_fd = fd;}
+void	AEventHandler::setTimeoutIt(std::list<AEventHandler*>::iterator& it) {timeout_it = it;}
 
 AEventHandler::~AEventHandler() {
 	if (_fd != -1) close(_fd);
@@ -97,27 +98,90 @@ const byteVector&	AMessage::getBody() const {return _body;}
 AMessage::~AMessage() {
 }
 #include "CgiContainer.hpp"
+#include "WebServ.hpp"
 #include "ANetContainer.hpp"
+#include "Logger.hpp"
+#include "CgiHandler.hpp"
+#include <sys/epoll.h>
+#include <unistd.h>
 
-CgiContainer::CgiContainer() : AEventHandler() {}
-
-CgiContainer::CgiContainer(const CgiContainer &other) : AEventHandler(other) 
-{
-	(void)other;
-}
-
-CgiContainer	&CgiContainer::operator=(const CgiContainer &other) 
-{
-	(void)other;
-	return (*this);
+CgiContainer::CgiContainer(int epollFd, ClientHandler& parent, const ServerConfig& server, HttpRequest& request, LocationConfig& location, std::string path) :
+	AEventHandler(), _outFd(-1),
+	_state(0), _index(0), _parent(parent) {
+	Logger::record(SETUP) << "Creating CGIContainer...";
+	Logger::record(SETUP) << "Forking...";
+	t_pipe fds = CgiHandler::execute_cgi(server, request, location, path, epollFd);
+	_fd = fds.inFd;
+	_outFd = fds.outFd;
+	if (addToEpoll(epollFd, EPOLLOUT | EPOLLRDHUP) == EPOLL_CTL_FAIL)
+		throw AEventHandler::HandlerException("Epoll CTL fail");
+	_lastAlive = time(NULL);
 }
 
 CgiContainer::~CgiContainer() {}
 
-int	CgiContainer::handleEvent(uint32_t event, WebServ &context) {
-	(void) event;
-	(void) context;
-	return 0;
+int	CgiContainer::handleWrite() {
+	const byteVector&	body =_parent.getRequest().getBody();
+	if (body.size() == 0) {
+		Logger::record(DEBUG) << "Body: " << body.size();
+		return CGI_WRITE_END;
+	}
+	ssize_t	bytes = write(_fd, body.data() + _index, body.size() - _index);
+	if (bytes < 0)
+		return CGI_WRITE_KO;
+	if (bytes == 0 || _index + bytes == body.size()) {
+		return CGI_WRITE_END;
+	}
+	_index += bytes;
+	Logger::record(DEBUG) << "Write handle";
+	return CGI_WRITE_OK;
+}
+
+int	CgiContainer::handleRead() {
+	unsigned char buffer[BUFFSIZE];
+	ssize_t	bytes = read(_fd, buffer, BUFFSIZE);
+	if (bytes < 0)
+		return CGI_READ_KO;
+	if (bytes == 0)
+		return CGI_READ_END;
+
+	_CgiResult.insert(_CgiResult.end(), buffer, buffer + bytes);
+	return CGI_READ_OK;
+}
+
+int	CgiContainer::handleEvent(uint32_t event, WebServ& context) {
+	epoll_event	dummy;
+
+	if (event == EPOLLIN) {
+		Logger::record(INFO) << "Reading from CGI...";
+		switch (handleRead()) {
+			case CGI_READ_KO: return CGI_KO;
+			case CGI_READ_OK: break;
+			case CGI_READ_END:
+				Logger::record(INFO) << "Building CGI response";
+				byteVector	response = _parent.getResponse().get_full_response();
+				response.insert(response.end(), _CgiResult.begin(), _CgiResult.end());
+				_parent.activateEpoll(context.getEpoll(), EPOLLOUT);
+				return CGI_END;
+		}
+	}
+	else if (event == EPOLLOUT) {
+		Logger::record(INFO) << "Writing to CGI...";
+		switch (handleWrite()) {
+			case CGI_WRITE_KO: return CGI_KO;
+			case CGI_WRITE_OK: break;
+			case CGI_WRITE_END:
+				Logger::record(INFO) << "Finished writing to CGI..";
+				epoll_ctl(context.getEpoll(), EPOLL_CTL_DEL, _fd, &dummy);
+				close(_fd);
+				_fd = _outFd;
+				if (addToEpoll(context.getEpoll(), EPOLLIN) == EPOLL_CTL_FAIL)
+					return CGI_KO;
+				return CGI_WRITE_END;
+			default: break;
+		}
+	}
+	return CGI_OK;
 }
 
 int	CgiContainer::get_type() const 
@@ -127,6 +191,7 @@ int	CgiContainer::get_type() const
 #include "CgiHandler.hpp"
 #include "Logger.hpp"
 #include "CgiContainer.hpp"
+#include <fcntl.h>
 #include <sys/epoll.h>
 #include <unistd.h>
 
@@ -230,7 +295,7 @@ static char **map_to_envp(std::map<std::string, std::string> &env)
 	return (envp);
 }
 
-void	CgiHandler::execute_cgi(const ServerConfig &server, HttpRequest &request, LocationConfig &location, std::string &path, int &epollFd)
+t_pipe CgiHandler::execute_cgi(const ServerConfig &server, HttpRequest &request, LocationConfig &location, std::string &path, int &epollFd)
 {
 	std::map<std::string, std::string> env;
 	std::vector<char>	body = request.getBody();
@@ -270,34 +335,37 @@ void	CgiHandler::execute_cgi(const ServerConfig &server, HttpRequest &request, L
 		dup_fd(pipefd[3], STDOUT_FILENO);
 		close_pipes(pipefd);
 		char **argv = new char*[2];
-		std::copy(path.begin(), path.end(), argv[0]);
+		argv[0] = const_cast<char *>(path.c_str());
 		argv[1] = NULL;
-		execve(path.c_str(), argv, envp);
+		execve(location.get_cgi_path().c_str(), argv, envp);
 		clear_envp(envp);
 	}
-	close_pipes(pipefd);
+	close (pipefd[0]);
+	close (pipefd[3]);
+	return (t_pipe) {pipefd[1], pipefd[2]};
 }
 
 
 #include "ClientHandler.hpp"
 #include "RequestHandler.hpp"
 #include "Logger.hpp"
+#include "CgiContainer.hpp"
 #include <cerrno>
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
-ClientHandler::ClientHandler(): AEventHandler(), _hostConf(NULL) {
+ClientHandler::ClientHandler(): AEventHandler(), _hostConf(NULL), _response(NULL) {
 }
 
-ClientHandler::ClientHandler(WebServ& context, ServerHandler& host) : _request(NULL), _state(READING_REQUEST) {
+ClientHandler::ClientHandler(WebServ& context, ServerHandler& host) : _request(NULL), _state(READING_REQUEST), _response(NULL) {
 	Logger::record(SETUP) << "Creating new client.";
 	if ((_fd = accept(host.getSocket(), NULL, NULL)) < 0) {
 		Logger::record(ERROR) << "Failed to accept connection on " << host.getSocket();
 		throw std::runtime_error("Error, client.");
 	}
 
-	if (addToEpoll(context, EPOLLIN) == EPOLL_CTL_FAIL) {
+	if (addToEpoll(context.getEpoll(), EPOLLIN) == EPOLL_CTL_FAIL) {
 		throw AEventHandler::HandlerException("Epoll fail");
 	}
 
@@ -306,7 +374,17 @@ ClientHandler::ClientHandler(WebServ& context, ServerHandler& host) : _request(N
 	timeout_it = context.getTimeList().begin();
 	_hostConf = &host.getConfig();
 	_lastAlive = std::time(NULL);
+	_bytesSent = 0;
 }
+
+int	ClientHandler::activateEpoll(int epollFd, int event) {
+	Logger::record(SETUP) << "Client: " << _fd << "resetting epoll...";
+	_state = SENDING_RESPONSE;
+	return addToEpoll(epollFd, event);
+}
+
+const HttpRequest&	ClientHandler::getRequest() const { return *_request;}
+Response&	ClientHandler::getResponse() { return *_response;}
 
 int	ClientHandler::receiveMsg(WebServ& context) {
 	size_t	bytes;
@@ -339,10 +417,10 @@ int	ClientHandler::receiveMsg(WebServ& context) {
             {
             	Logger::record(INFO) << "Downloading file...";
                 //try catch
-                this->_fileHandler = new FileHandler(*_request, handler.getLocation(), contentType);
+                this->_fileHandler = FileHandler(*_request, handler.getLocation(), contentType);
                 this->_state = WRITING_BODY;
                 if (!this->_request->getBody().empty())
-                    this->_fileHandler->multiparse(this->_request->getBody());
+                    this->_fileHandler.multiparse(this->_request->getBody());
             } 
             else
                 return build_response(context.getEpoll());
@@ -351,8 +429,8 @@ int	ClientHandler::receiveMsg(WebServ& context) {
 	else if (this->_state == WRITING_BODY) 
     {
         std::vector<char> chunk(buffer, buffer + bytes);
-        this->_fileHandler->multiparse(chunk);
-        if (this->_fileHandler->getState() == FileHandler::END)
+        this->_fileHandler.multiparse(chunk);
+        if (this->_fileHandler.getState() == FileHandler::END)
             return build_response(context.getEpoll());
     }
 	return CLT_MSG_RCV;
@@ -360,9 +438,18 @@ int	ClientHandler::receiveMsg(WebServ& context) {
 
 int ClientHandler::build_response(int epollFd) 
 {
+	Logger::record(INFO) << "Building response...";
     RequestHandler handler((*_hostConf)[0], *_request, epollFd);
-    this->_response = handler.handle_request();
-    this->_state = SENDING_RESPONSE;
+    if (_response) delete _response;
+   	this->_response = handler.handle_request();
+	std::string	ext;
+    if (handler.get_cgi_ext(ext)) {
+    	Logger::record(INFO) << "Cgi detected, processing...";
+		_cgi = new CgiContainer(epollFd, *this, handler.getServer(), *_request, handler.getLocation(), handler.get_file_path());
+    	_state = WAITING_CGI;
+    }
+    else
+    	this->_state = SENDING_RESPONSE;
     return CLT_MSG_END;
     //switch to epollout
 }
@@ -372,21 +459,27 @@ void ClientHandler::handleWrite()
     if (this->_state != SENDING_RESPONSE || !this->_response) 
         return;
     byteVector &resStr = this->_response->get_full_response();
-    ssize_t sent = send(this->_fd, resStr.data() + this->_bytesSent, resStr.size() - this->_bytesSent, 0);
-    if (sent > 0) 
-    {
-        this->_bytesSent += sent;
-        if (this->_bytesSent >= resStr.size())
+		//   if (resStr.size() == _bytesSent || resStr.size()) {
+		//   	this->_state = END;
+		// this->_bytesSent = 0;
+		//   }
+    // else {
+    	ssize_t sent = send(this->_fd, resStr.data() + this->_bytesSent, resStr.size() - this->_bytesSent, 0);
+    	if (sent > 0) 
+    	{
+        	this->_bytesSent += sent;
+        	if (this->_bytesSent >= resStr.size())
+			{
+            	this->_state = END;
+				this->_bytesSent = 0;
+			}
+    	}
+    	else if (sent == -1)
 		{
-            this->_state = END;
+        	this->_state = END;
 			this->_bytesSent = 0;
 		}
-    }
-    else if (sent == -1)
-	{
-        this->_state = END;
-		this->_bytesSent = 0;
-	}
+	// }
 }
 
 int	ClientHandler::handleEvent(uint32_t event, WebServ& context) {
@@ -397,6 +490,17 @@ int	ClientHandler::handleEvent(uint32_t event, WebServ& context) {
 			case CLT_MSG_END:
 				if (_request) delete _request;
 				_request = _parser.generateRequest();
+				if (_state == WAITING_CGI) {
+					epoll_ctl(context.getEpoll(), EPOLL_CTL_DEL, _fd, NULL);
+					context.getTimeList().push_front(_cgi);
+					return CLT_MSG_END;
+				}
+				else {
+					epoll_event ev;
+					ev.events = EPOLLOUT;
+					ev.data.ptr = this;
+					epoll_ctl(context.getEpoll(), EPOLL_CTL_MOD, _fd, &ev);
+				}
 				break;
 			case CLT_MSG_RCV:
 				context.getTimeList().splice(context.getTimeList().begin(), context.getTimeList(), timeout_it);
@@ -407,23 +511,18 @@ int	ClientHandler::handleEvent(uint32_t event, WebServ& context) {
 				return 0;
 		}
 	}
-
-	epoll_event ev;
-	ev.events = EPOLLOUT;
-	ev.data.ptr = this;
-	epoll_ctl(context.getEpoll(), EPOLL_CTL_MOD, _fd, &ev);
-
-	if (event == EPOLLOUT) handleWrite();
+	else if (event == EPOLLOUT) handleWrite();
 	if (_state == END && this->_request->getHeaders()["Connection"] != "keep-alive")
 		return RM_CLT;
 	return CLT_MSG_END;
-
 }
 
 
 
 ClientHandler::~ClientHandler() {
-	if (_request) delete _request;
+	// if (_request) delete _request;
+	// if (_response) delete _response;
+	// if (_cgi) delete _cgi;
 }
 #include "ConfigParser.hpp"
 #include <fstream>
@@ -672,10 +771,13 @@ std::ostream &operator<<(std::ostream &out, const ConfigParser &conf)
 	return (out);
 }
 #include "FileHandler.hpp"
+#include "Logger.hpp"
 #include <algorithm>
 #include <unistd.h>
 #include <fcntl.h>
 #include <iostream>
+
+FileHandler::FileHandler() : _fileFd(-1) {}
 
 FileHandler::FileHandler(HttpRequest &request, LocationConfig &location, std::string &content_type) :
 	// _request(request),
@@ -696,6 +798,18 @@ FileHandler::FileHandler(HttpRequest &request, LocationConfig &location, std::st
 	}
 	// Le chemin d'upload devrait idéalement venir de la configuration de la Location
 	this->_uploadPath = "./website/uploads/"; 
+}
+
+FileHandler&	FileHandler::operator=(const FileHandler& other) {
+	if (this != &other) {
+		_state = other._state;
+		_fileFd = other._fileFd;
+		_boundary = other._boundary;
+		_buffer = other._buffer;
+		_filename = other._filename;
+		_uploadPath = other._uploadPath;
+	}
+	return (*this);
 }
 
 FileHandler::~FileHandler() 
@@ -741,6 +855,7 @@ static std::string extract_filename(std::vector<char>::iterator begin, std::vect
 // 	std::cout << "+++++++++++++++++++++\n";
 // }
 
+//TODO check if FD > 0
 void FileHandler::multiparse(const std::vector<char> &chunk) 
 {
 	this->_buffer.insert(this->_buffer.end(), chunk.begin(), chunk.end());
@@ -762,8 +877,8 @@ void FileHandler::multiparse(const std::vector<char> &chunk)
 				break;
 			this->_filename = extract_filename(this->_buffer.begin(), it);
 			this->_filename = this->_uploadPath + this->_filename;
-			// std::cout << this->_filename << '\n';
 			this->_fileFd = open(this->_filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+			Logger::record(INFO) << "File: " << _filename.c_str() << " fd: " << _fileFd;
 			this->_buffer.erase(this->_buffer.begin(), it + 4);
 			this->_state = WRITING_DATA;
 		}
@@ -808,7 +923,8 @@ void FileHandler::multiparse(const std::vector<char> &chunk)
 		if (this->_state == END)
 			break;
 	}
-}#include "HeaderMap.hpp"
+}
+#include "HeaderMap.hpp"
 
 HeaderMap::HeaderMap() {
 }
@@ -867,6 +983,7 @@ HeaderMap::~HeaderMap() {
 #include "HttpParser.hpp"
 #include "StatusCode.hpp"
 #include <algorithm>
+#include "Logger.hpp"
 #include <cstddef>
 #include "utils.hpp"
 
@@ -935,16 +1052,20 @@ bool	HttpParser::parseRequestLine() {
 void	HttpParser::parseMediaType(std::string& rawMedia) {
 	size_t	slashPos = rawMedia.find('/');
 
-	if (slashPos == std::string::npos || slashPos == rawMedia.size() -1 || slashPos == 0)
+	if (slashPos == std::string::npos || slashPos == rawMedia.size() -1 || slashPos == 0) {
+		Logger::record(ERROR) << "1";
 		throw HttpRequestParsingException(BAD_REQUEST);
+	}
 
 	std::string	media = rawMedia.substr(0, slashPos);
 	m_subtype = rawMedia.substr(slashPos +1);
 	trim(media);
 	trim(m_subtype);
 
-	if (m_subtype.empty())
+	if (m_subtype.empty()) {
+		Logger::record(ERROR) << "2";
 		throw HttpRequestParsingException(BAD_REQUEST);
+	}
 	if (media == "text") m_type = TEXT;
 	else if (media == "application") m_type = APPLICATION;
 	else if (media == "multipart") m_type = MULTIPART;
@@ -982,8 +1103,10 @@ void	HttpParser::processHeader() {
 		char*	endptr;
 		long	val;
 		val = std::strtol(header.c_str(), &endptr, 10);
-		if (*endptr != '\0' || val < 0 || val > MAX_BODY_SIZE)
+		if (*endptr != '\0' || val < 0 || val > MAX_BODY_SIZE) {
+			Logger::record(ERROR) << "3";
 			throw HttpRequestParsingException(BAD_REQUEST);
+		}
 		m_contentLength = static_cast<size_t>(val);
 		if (m_contentLength > 0) {
 			m_state = BODY;
@@ -1003,8 +1126,10 @@ void	HttpParser::processHeader() {
 		strLower(media); parseMediaType(media);
 		switch (m_type) {
 			case TEXT:
-				if (m_subtype.empty())
-					throw HttpRequestParsingException(BAD_REQUEST);
+				if (m_subtype.empty()) {
+					// throw HttpRequestParsingException(BAD_REQUEST);
+					break;
+				}
 				break;
 			case APPLICATION:
 				if (m_subtype == "x-www-form-urlencoded") {
@@ -1019,8 +1144,6 @@ void	HttpParser::processHeader() {
 			case MULTIPART:
 				if (m_subtype != "form-data")
 					throw HttpRequestParsingException(UNSUPORTED_MEDIA_TYPE);
-				m_boundary = extractBoundary(header);
-				if (m_boundary.empty()) throw HttpRequestParsingException(BAD_REQUEST);
 				break ;
 			default:
 				throw HttpRequestParsingException(UNSUPORTED_MEDIA_TYPE);
@@ -1044,12 +1167,16 @@ bool	HttpParser::parseHeader() {
 	}
 
 	std::vector<char>::iterator	itSeparator = std::find(itStart, itEndLine, ':');
-	if (itSeparator == itEndLine)
+	if (itSeparator == itEndLine) {
+		Logger::record(ERROR) << "5";
 		throw HttpRequestParsingException(BAD_REQUEST);
+	}
 
 	std::string	key(itStart, itSeparator);
-	if (key.empty())
+	if (key.empty()) {
+		Logger::record(ERROR) << "6";
 		throw HttpRequestParsingException(BAD_REQUEST);
+	}
 
 	std::string	value(itSeparator + 1, itEndLine);
 	size_t	firstSpace = value.find_first_not_of(' ');
@@ -1096,7 +1223,8 @@ bool	HttpParser::parseBody() {
 		m_body.insert(m_body.end(), m_readBuf.begin() + m_cursor, m_readBuf.begin() + toCopy+ m_cursor);
 		m_cursor += toCopy;
 		m_bodySize += toCopy;
-		m_state = COMPLETE;
+		if (m_type == MULTIPART)
+			m_state = COMPLETE;
 	}
 
 	if (m_bodySize == m_contentLength) {
@@ -1515,6 +1643,7 @@ RequestHandler::RequestHandler(const RequestHandler &other) :
 RequestHandler::~RequestHandler() {}
 
 LocationConfig	&RequestHandler::getLocation() {return (this->_location);}
+const ServerConfig	&RequestHandler::getServer() {return (this->_server);}
 
 static bool check_path_correspondance(std::vector<std::string> &uri_blocks, std::vector<std::string> &loc_blocks, size_t block_nb)
 {
@@ -1643,10 +1772,7 @@ Response* RequestHandler::build_get_response()
 	if (!check_if_method_allowed(this->_location, "GET"))
 		return new Response(METHOD_NOT_ALLOWED);
 	if (this->get_cgi_ext(ext))
-	{
-		CgiHandler::execute_cgi(this->_server, this->_request, this->_location, path, this->_epollFd);
 		return new Response(OK, byteVector(), path, true);
-	}
 	file = GetFile(path);
 	if (file.empty() || access(path.c_str(), F_OK) != 0)
 		return new Response(NOT_FOUND);
@@ -1666,10 +1792,7 @@ Response* RequestHandler::build_post_response()
 	if (!check_if_method_allowed(this->_location, "POST"))
 		return new Response(METHOD_NOT_ALLOWED);
 	if (this->get_cgi_ext(ext))
-	{
-		CgiHandler::execute_cgi(this->_server, this->_request, this->_location, path, this->_epollFd);
 		return new Response(OK, emptyBody, path, true);
-	}
 	return new Response(CREATED, emptyBody, path, true);
 }
 
@@ -1720,7 +1843,8 @@ bool	RequestHandler::get_cgi_ext(std::string &ext)
 			return true;
 	}
 	return false;
-}#include "Response.hpp"
+}
+#include "Response.hpp"
 #include "StatusCode.hpp"
 #include "CgiHandler.hpp"
 #include "utils.hpp"
@@ -1799,6 +1923,7 @@ static std::string	get_http_date()
 	return (std::string(buffer));
 }
 
+//TODO When another status code than 200 is send mime type may be irrevalent
 void	Response::build_header(size_t body_size, std::string path, bool connection)
 {
 	std::string			str_size;
@@ -1806,10 +1931,10 @@ void	Response::build_header(size_t body_size, std::string path, bool connection)
 
 	str_size = int_to_string(body_size);
 	buffer += 
-	"Content-Length: " + str_size + '\n' +
-	"Content-Type: " + get_mime_type(path) + '\n' +
-	"Date: " + get_http_date() + '\n' +
-	"Connection: " + (connection ? "keep-alive" : "close") + '\n' +
+	"Content-Length: " + str_size + "\r\n" +
+	"Content-Type: " + get_mime_type(path) + "\r\n" +
+	"Date: " + get_http_date() + "\r\n" +
+	"Connection: " + (connection ? "keep-alive" : "close") +
 	"\r\n\r\n";
 	this->_full_response.insert(this->_full_response.end(), buffer.begin(), buffer.end());
 }
@@ -1958,7 +2083,7 @@ ServerHandler::ServerHandler(WebServ& context, std::map<int, std::vector<ServerC
 	if (bind(serverFd, (struct sockaddr*)&servAddr, sizeof(servAddr))) {
 		close(serverFd);
 		Logger::record(ERROR) << "ERROR, can't bind socket to port: " << it->first;
-		throw AEventHandler::HandlerException("Port is not avaible.");
+		throw AEventHandler::HandlerException("Port is not avaiable.");
 	}
 
 	Logger::record(SETUP) << "listening on port: " << it->first;
@@ -1969,7 +2094,7 @@ ServerHandler::ServerHandler(WebServ& context, std::map<int, std::vector<ServerC
 	}
 
 	setSocket(serverFd);
-	if (addToEpoll(context, EPOLLIN) == EPOLL_CTL_FAIL)
+	if (addToEpoll(context.getEpoll(), EPOLLIN) == EPOLL_CTL_FAIL)
 		throw AEventHandler::HandlerException("Epoll fail");
 
 	Logger::record(SUCCESS) << "Success, socket is ready !";
@@ -2030,6 +2155,7 @@ bool	g_running = true;
 void	sigHandler(int sig) {
 	if (sig == SIGINT)
 		g_running = false;
+	Logger::record(INFO) << "Terminating WebServ...";
 }
 
 WebServ::WebServ() {
@@ -2119,11 +2245,18 @@ void	WebServ::run(const char *arg) {
 				case RM_CLT:
 					removeHandler(incoming);
 					break;
+				case CGI_END:
+					removeHandler(incoming);
+					break;
+				case CGI_KO:
+					//TODO internal server error
+					removeHandler(incoming);
+					break;
 				default:
 					break ;
 			}
 		}
-		checkTimeout();
+		// checkTimeout();
 	}
 }
 

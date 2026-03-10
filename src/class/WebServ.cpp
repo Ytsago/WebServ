@@ -10,6 +10,7 @@ bool	g_running = true;
 void	sigHandler(int sig) {
 	if (sig == SIGINT)
 		g_running = false;
+	Logger::record(INFO) << "Terminating WebServ...";
 }
 
 WebServ::WebServ() {
@@ -99,11 +100,21 @@ void	WebServ::run(const char *arg) {
 				case RM_CLT:
 					removeHandler(incoming);
 					break;
+				case CGI_END:
+					removeHandler(incoming);
+					break;
+				case CGI_KO:
+					//TODO internal server error
+					removeHandler(incoming);
+					break;
+				case CGI_WRITE_END:
+					removeHandler(incoming);
+					break;
 				default:
 					break ;
 			}
 		}
-		checkTimeout();
+		// checkTimeout();
 	}
 }
 

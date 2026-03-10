@@ -19,7 +19,9 @@ class FileHandler
 			END
 		};
 
+		FileHandler();
 		FileHandler(HttpRequest &request, LocationConfig &location, std::string &content_type);
+		FileHandler&	operator=(const FileHandler& other);
 		~FileHandler();
 		
 		void			multiparse(const std::vector<char> &chunk);

@@ -145,8 +145,8 @@ void	HttpParser::processHeader() {
 		switch (m_type) {
 			case TEXT:
 				if (m_subtype.empty()) {
-					Logger::record(ERROR) << "4";
-					throw HttpRequestParsingException(BAD_REQUEST);
+					// throw HttpRequestParsingException(BAD_REQUEST);
+					break;
 				}
 				break;
 			case APPLICATION:
@@ -241,7 +241,8 @@ bool	HttpParser::parseBody() {
 		m_body.insert(m_body.end(), m_readBuf.begin() + m_cursor, m_readBuf.begin() + toCopy+ m_cursor);
 		m_cursor += toCopy;
 		m_bodySize += toCopy;
-		m_state = COMPLETE;
+		if (m_type == MULTIPART)
+			m_state = COMPLETE;
 	}
 
 	if (m_bodySize == m_contentLength) {

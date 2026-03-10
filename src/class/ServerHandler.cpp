@@ -25,7 +25,7 @@ ServerHandler::ServerHandler(WebServ& context, std::map<int, std::vector<ServerC
 	if (bind(serverFd, (struct sockaddr*)&servAddr, sizeof(servAddr))) {
 		close(serverFd);
 		Logger::record(ERROR) << "ERROR, can't bind socket to port: " << it->first;
-		throw AEventHandler::HandlerException("Port is not avaible.");
+		throw AEventHandler::HandlerException("Port is not avaiable.");
 	}
 
 	Logger::record(SETUP) << "listening on port: " << it->first;
@@ -36,7 +36,7 @@ ServerHandler::ServerHandler(WebServ& context, std::map<int, std::vector<ServerC
 	}
 
 	setSocket(serverFd);
-	if (addToEpoll(context, EPOLLIN) == EPOLL_CTL_FAIL)
+	if (addToEpoll(context.getEpoll(), EPOLLIN) == EPOLL_CTL_FAIL)
 		throw AEventHandler::HandlerException("Epoll fail");
 
 	Logger::record(SUCCESS) << "Success, socket is ready !";
