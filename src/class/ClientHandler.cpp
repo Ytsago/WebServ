@@ -17,7 +17,6 @@ ClientHandler::ClientHandler(WebServ& context, ServerHandler& host) : _request(N
 		Logger::record(ERROR) << "Failed to accept connection on " << host.getSocket();
 		throw std::runtime_error("Error, client.");
 	}
-
 	if (addToEpoll(context.getEpoll(), EPOLLIN) == EPOLL_CTL_FAIL) {
 		throw AEventHandler::HandlerException("Epoll fail");
 	}
@@ -33,11 +32,17 @@ ClientHandler::ClientHandler(WebServ& context, ServerHandler& host) : _request(N
 int	ClientHandler::activateEpoll(int epollFd, int event) {
 	Logger::record(SETUP) << "Client: " << _fd << "resetting epoll...";
 	_state = SENDING_RESPONSE;
-	return addToEpoll(epollFd, event);
+	epoll_event ev;
+	ev.events = event;
+	ev.data.ptr = this;
+	epoll_ctl(epollFd, EPOLL_CTL_MOD, _fd, &ev);
+	return 1;
 }
 
 const HttpRequest&	ClientHandler::getRequest() const { return *_request;}
 Response&	ClientHandler::getResponse() { return *_response;}
+
+void	ClientHandler::setResponse(Response *response) {_response = response;}
 
 int	ClientHandler::receiveMsg(WebServ& context) {
 	size_t	bytes;
@@ -56,9 +61,11 @@ int	ClientHandler::receiveMsg(WebServ& context) {
 		}
 		catch (HttpParser::HttpRequestParsingException &e) {
 			Logger::record(ERROR) << e.what();
-			return CLT_MSG_ERR;
+			this->_response = new Response(e.e_status);
+			this->_state = SENDING_RESPONSE;
+			return CLT_MSG_END;
 		}
-      if (this->_parser.isComplete()) 
+    	if (this->_parser.isComplete()) 
         {
         	if (_request) delete(_request);
         	_request = _parser.generateRequest();
@@ -66,15 +73,25 @@ int	ClientHandler::receiveMsg(WebServ& context) {
         	Logger::record(INFO) << "Processing request...";
             RequestHandler handler((*_hostConf)[0], *_request, context.getEpoll());
             std::string contentType;
+			std::string	ext;
             if (handler.setupUpload(contentType)) 
             {
             	Logger::record(INFO) << "Downloading file...";
-                //try catch
                 this->_fileHandler = FileHandler(*_request, handler.getLocation(), contentType);
                 this->_state = WRITING_BODY;
                 if (!this->_request->getBody().empty())
                     this->_fileHandler.multiparse(this->_request->getBody());
-            } 
+            }
+			else if (handler.get_cgi_ext(ext)) {
+				Logger::record(INFO) << "Cgi detected, processing...";
+				this->_response = handler.handle_request();
+				std::string	path = handler.get_cgi_path();
+				// std::string	path = handler.get_file_path();
+				t_pipe	fds = CgiHandler::execute_cgi(handler.getServer(), *_request, handler.getLocation(), path);
+				_cgiIn = new CgiContainer(context.getEpoll(), *this, fds.inFd, EPOLLOUT);
+				_cgiOut = new CgiContainer(context.getEpoll(), *this, fds.outFd, EPOLLIN);
+				_state = WAITING_CGI;
+			}
             else
                 return build_response(context.getEpoll());
         }
@@ -86,6 +103,19 @@ int	ClientHandler::receiveMsg(WebServ& context) {
         if (this->_fileHandler.getState() == FileHandler::END)
             return build_response(context.getEpoll());
     }
+	else if (_state == WAITING_CGI) 
+	{
+		epoll_event ev;
+		ev.events = 0;
+		ev.data.ptr = this;
+		epoll_ctl(context.getEpoll(), EPOLL_CTL_MOD, _fd, &ev);
+		context.getTimeList().push_front(_cgiIn);
+		context.getTimeList().push_front(_cgiOut);
+		context.getRegistery()[_cgiIn->getSocket()] = _cgiIn;
+		context.getRegistery()[_cgiOut->getSocket()] = _cgiOut;
+    	this->_state = SENDING_RESPONSE;
+		return CLT_MSG_END;
+	}
 	return CLT_MSG_RCV;
 }
 
@@ -95,17 +125,7 @@ int ClientHandler::build_response(int epollFd)
     RequestHandler handler((*_hostConf)[0], *_request, epollFd);
     if (_response) delete _response;
    	this->_response = handler.handle_request();
-	std::string	ext;
-    if (handler.get_cgi_ext(ext)) {
-    	Logger::record(INFO) << "Cgi detected, processing...";
-    	std::string	path = handler.get_file_path();
-    	t_pipe	fds = CgiHandler::execute_cgi(handler.getServer(), *_request, handler.getLocation(), path);
-		_cgiIn = new CgiContainer(epollFd, *this, fds.inFd, EPOLLOUT);
-		_cgiOut = new CgiContainer(epollFd, *this, fds.outFd, EPOLLIN);
-    	_state = WAITING_CGI;
-    }
-    else
-    	this->_state = SENDING_RESPONSE;
+    this->_state = SENDING_RESPONSE;
     return CLT_MSG_END;
     //switch to epollout
 }
@@ -146,20 +166,10 @@ int	ClientHandler::handleEvent(uint32_t event, WebServ& context) {
 			case CLT_MSG_END:
 				if (_request) delete _request;
 				_request = _parser.generateRequest();
-				if (_state == WAITING_CGI) {
-					epoll_ctl(context.getEpoll(), EPOLL_CTL_DEL, _fd, NULL);
-					context.getTimeList().push_front(_cgiIn);
-					context.getTimeList().push_front(_cgiOut);
-					context.getRegistery()[_cgiIn->getSocket()] = _cgiIn;
-					context.getRegistery()[_cgiOut->getSocket()] = _cgiOut;
-					return CLT_MSG_END;
-				}
-				else {
-					epoll_event ev;
-					ev.events = EPOLLOUT;
-					ev.data.ptr = this;
-					epoll_ctl(context.getEpoll(), EPOLL_CTL_MOD, _fd, &ev);
-				}
+				epoll_event ev;
+				ev.events = EPOLLOUT;
+				ev.data.ptr = this;
+				epoll_ctl(context.getEpoll(), EPOLL_CTL_MOD, _fd, &ev);
 				break;
 			case CLT_MSG_RCV:
 				context.getTimeList().splice(context.getTimeList().begin(), context.getTimeList(), timeout_it);

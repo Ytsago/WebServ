@@ -122,17 +122,6 @@ t_pipe CgiHandler::execute_cgi(const ServerConfig &server, HttpRequest &request,
 			//exception
 		}
 	}
-	/**
-	* epoll ctl pipefd[1] and pipefd[2] 
-	* -> refacto newconnection in a way that:
-	*		Object cgicontainer inherits from ANetContainer
-	*		ev.data.ptr = cgicontainer so when epoll wait gives us the fd we know that its a pipefd through ANetContainer::getType()
-	*		epoll ctl pipefd[1] on EPOLLOUT
-	*		epoll ctl pipefd[2] on EPOLLIN
-	*/
-	// AEventHandler	*newCgi = new CgiContainer;
-	// add_to_epoll(epollFd, pipefd[1], EPOLLOUT, newCgi);
-	// add_to_epoll(epollFd, pipefd[2], EPOLLIN, newCgi);
 	pid = fork();
 	if (pid == -1)
 	{
@@ -143,11 +132,14 @@ t_pipe CgiHandler::execute_cgi(const ServerConfig &server, HttpRequest &request,
 		dup_fd(pipefd[0], STDIN_FILENO);
 		dup_fd(pipefd[3], STDOUT_FILENO);
 		close_pipes(pipefd);
-		char **argv = new char*[2];
-		argv[0] = const_cast<char *>(path.c_str());
-		argv[1] = NULL;
+		char **argv = new char*[3];
+		argv[0] = const_cast<char *>(location.get_cgi_path().c_str());
+		argv[1] = const_cast<char *>(path.c_str());
+		argv[2] = NULL;
 		execve(location.get_cgi_path().c_str(), argv, envp);
+		delete [] argv;
 		clear_envp(envp);
+		exit(0);
 	}
 	close (pipefd[0]);
 	close (pipefd[3]);

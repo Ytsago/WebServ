@@ -7,7 +7,7 @@
 class CgiContainer : public AEventHandler 
 {
 	private:
-		int	_outFd;
+		int	_epollFd;
 		int	_state;
 		size_t	_index;
 		ClientHandler&	_parent;

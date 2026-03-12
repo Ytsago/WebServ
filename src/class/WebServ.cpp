@@ -122,8 +122,8 @@ void WebServ::removeHandler(AEventHandler* handler) {
 	Logger::record(INFO) << "Removing handler: " << handler->getSocket();
 	if (!handler) return;
 	epoll_ctl(epollFd, EPOLL_CTL_DEL, handler->getSocket(), NULL);
-	timeout.erase(handler->getTimeoutIt());
-	registery.erase(handler->getSocket());
+	// timeout.erase(handler->getTimeoutIt());
+	// registery.erase(handler->getSocket());
 	delete handler;
 }
 

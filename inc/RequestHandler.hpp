@@ -34,7 +34,9 @@ class RequestHandler
 		bool			get_upload_type(std::string &content_type);
 		bool			get_cgi_ext(std::string &ext);
 		std::string		get_file_path();
+		std::string		get_cgi_path();
 		void			find_corresponding_location();
+		int				get_cgi_loc(std::string &ext);
 		LocationConfig&	getLocation();
 		const ServerConfig	&getServer();
 };

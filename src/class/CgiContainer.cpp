@@ -1,19 +1,23 @@
 #include "CgiContainer.hpp"
+#include "Response.hpp"
 #include "WebServ.hpp"
 #include "ANetContainer.hpp"
 #include "Logger.hpp"
 #include "CgiHandler.hpp"
 #include <sys/epoll.h>
 #include <unistd.h>
+#include <cstring>
 
 CgiContainer::CgiContainer(int epollFd, ClientHandler& parent, int fd, int event) :
 	AEventHandler(),
 	_state(0), _index(0), _parent(parent) {
 	_fd = fd;
+	_epollFd = epollFd;
 	Logger::record(SETUP) << "Creating CGIContainer...";
-	Logger::record(SETUP) << "Forking...";
 	if (addToEpoll(epollFd, event) == EPOLL_CTL_FAIL)
+	{
 		throw AEventHandler::HandlerException("Epoll CTL fail");
+	}
 	_lastAlive = time(NULL);
 }
 
@@ -32,19 +36,18 @@ int	CgiContainer::handleWrite() {
 		return CGI_WRITE_END;
 	}
 	_index += bytes;
-	Logger::record(DEBUG) << "Write handle";
 	return CGI_WRITE_OK;
 }
 
 int	CgiContainer::handleRead() {
 	unsigned char buffer[BUFFSIZE];
 	ssize_t	bytes = read(_fd, buffer, BUFFSIZE);
+	std::cout << "bytes: " << bytes;
 	if (bytes < 0)
 		return CGI_READ_KO;
-	if (bytes == 0)
-		return CGI_READ_END;
-
 	_CgiResult.insert(_CgiResult.end(), buffer, buffer + bytes);
+	if (bytes < BUFFSIZE || bytes == 0)
+		return CGI_READ_END;
 	return CGI_READ_OK;
 }
 
@@ -52,12 +55,17 @@ int	CgiContainer::handleEvent(uint32_t event, WebServ& context) {
 	if (event & EPOLLIN) {
 		Logger::record(INFO) << "Reading from CGI...";
 		switch (handleRead()) {
-			case CGI_READ_KO: return CGI_KO;
-			case CGI_READ_OK: break;
+			case CGI_READ_KO:
+				Logger::record(INFO) << "Reading KO";
+				return CGI_KO;
+			case CGI_READ_OK:
+				Logger::record(INFO) << "Reading OK";
+				break;
 			case CGI_READ_END:
 				Logger::record(INFO) << "Building CGI response";
-				byteVector	response = _parent.getResponse().get_full_response();
-				response.insert(response.end(), _CgiResult.begin(), _CgiResult.end());
+				Response *response = new Response(OK, _CgiResult, "", true);
+				_parent.setResponse(response);
+				// Logger::record(INFO) << "CGI result: " << response->get_full_response().data();
 				_parent.activateEpoll(context.getEpoll(), EPOLLOUT);
 				return CGI_END;
 		}

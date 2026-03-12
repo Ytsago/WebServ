@@ -64,7 +64,7 @@ static std::string	get_mime_type(std::string &path)
 		if (mime_types.count(ext))
 			return mime_types[ext];
 	}
-	return ("application/octet-stream");
+	return ("text/html");
 }
 
 static std::string	get_http_date()
