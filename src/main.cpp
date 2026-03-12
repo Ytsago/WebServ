@@ -69,6 +69,7 @@ std::vector<unsigned char>	fileReader(std::string path) {
 // }
 //
 //
+
 int main(int ac, char* const av[]) {
 	Logger::upColor();
 	if (ac == 2)

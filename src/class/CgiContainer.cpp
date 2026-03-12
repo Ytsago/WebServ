@@ -69,6 +69,7 @@ int	CgiContainer::handleEvent(uint32_t event, WebServ& context) {
 			case CGI_WRITE_OK: break;
 			case CGI_WRITE_END:
 				Logger::record(INFO) << "Finished writing to CGI..";
+				epoll_ctl(context.getEpoll(), EPOLL_CTL_DEL, _fd, NULL);
 				return CGI_WRITE_END;
 			default: break;
 		}

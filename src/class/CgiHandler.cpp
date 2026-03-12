@@ -143,9 +143,10 @@ t_pipe CgiHandler::execute_cgi(const ServerConfig &server, HttpRequest &request,
 		dup_fd(pipefd[0], STDIN_FILENO);
 		dup_fd(pipefd[3], STDOUT_FILENO);
 		close_pipes(pipefd);
-		char **argv = new char*[2];
-		argv[0] = const_cast<char *>(path.c_str());
-		argv[1] = NULL;
+		char **argv = new char*[3];
+		argv[0] = const_cast<char *>(location.get_cgi_path().c_str());
+		argv[1] = const_cast<char *>(path.c_str());
+		argv[2] = NULL;
 		execve(location.get_cgi_path().c_str(), argv, envp);
 		clear_envp(envp);
 	}
