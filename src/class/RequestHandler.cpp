@@ -96,6 +96,48 @@ void	RequestHandler::find_corresponding_location()
 	} 
 }
 
+int	RequestHandler::get_cgi_loc(std::string &ext)
+{
+	std::vector<LocationConfig>::iterator	it;
+	std::vector<LocationConfig>	server_locations = this->_server.get_locations();
+
+	for (it = server_locations.begin(); it != server_locations.end(); it++)
+	{
+		if (it->get_path() == ext)
+		{
+			this->_location = *it;
+			return 0;
+		}
+	}
+	return 1;
+}
+
+std::string	RequestHandler::get_cgi_path()
+{
+	std::string	uri = this->_request.getUri();
+	std::string	root;
+	std::string	index;
+	std::string path;
+
+	root = this->_location.get_root().empty() ? this->_server.get_root() : this->_location.get_root();
+    if (!root.empty() && root[root.size() - 1] != '/')
+		root += '/';
+	std::string loc_path = this->_location.get_path();
+	std::string part_after_loc = uri.substr(uri.rfind("/"));
+    if (part_after_loc.empty() || part_after_loc == "/") 
+    {
+        index = this->_location.get_index().empty() ? this->_server.get_index() : this->_location.get_index();
+        path = root + index;
+    } 
+    else 
+    {
+        if (part_after_loc[0] == '/')
+            part_after_loc.erase(0, 1);
+        path = root + part_after_loc;
+    }
+	return (path);
+}
+
 std::string	RequestHandler::get_file_path()
 {
 	std::string	uri = this->_request.getUri();
@@ -167,12 +209,17 @@ Response* RequestHandler::build_get_response()
 	if (!check_if_method_allowed(this->_location, "GET"))
 		return new Response(METHOD_NOT_ALLOWED);
 	if (this->get_cgi_ext(ext))
+	{
+		if (this->get_cgi_loc(ext))
+			return new Response(NOT_IMPLEMENTED, byteVector(), path, true);
 		return new Response(OK, byteVector(), path, true);
+	}
 	file = GetFile(path);
 	if (file.empty() || access(path.c_str(), F_OK) != 0)
+	{
+		Logger::record(INFO) << "File not found: " << path;
 		return new Response(NOT_FOUND);
-	// if (ext == ".png")
-	// 	Logger::record(ERROR) << file.data();
+	}
 	return new Response(OK, file, path, true);
 }
 
@@ -187,7 +234,11 @@ Response* RequestHandler::build_post_response()
 	if (!check_if_method_allowed(this->_location, "POST"))
 		return new Response(METHOD_NOT_ALLOWED);
 	if (this->get_cgi_ext(ext))
+	{
+		if (this->get_cgi_loc(ext))
+			return new Response(NOT_IMPLEMENTED, byteVector(), path, true);
 		return new Response(OK, emptyBody, path, true);
+	}
 	return new Response(CREATED, emptyBody, path, true);
 }
 
@@ -215,11 +266,7 @@ bool	RequestHandler::get_upload_type(std::string &content_type)
 		content_type = "multipart/form-data";
 		return true;
 	}
-	if (req_ct.find("application/octet-stream") != std::string::npos) {
-		content_type = "application/octet-stream";
-		return true;
-	}
-	return false;	
+	return false;
 }
 
 bool	RequestHandler::get_cgi_ext(std::string &ext)

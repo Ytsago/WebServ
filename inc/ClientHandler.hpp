@@ -25,6 +25,7 @@ class ClientHandler : public AEventHandler {
 
         const HttpRequest&	getRequest() const;
         Response&	getResponse();
+        void        setResponse(Response *response);
 		enum ClientState 
         {
             READING_REQUEST,
