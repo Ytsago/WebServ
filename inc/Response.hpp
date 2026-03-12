@@ -5,7 +5,6 @@
 #include <cmath>
 
 #include "AMessage.hpp"
-#include "Request.hpp"
 #include "ServerConfig.hpp"
 #include "LocationConfig.hpp"
 #include "utils.hpp"

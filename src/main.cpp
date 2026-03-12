@@ -4,23 +4,10 @@
 #include "StatusCode.hpp"
 #include <fcntl.h>
 #include <fstream>
-#include "Request.hpp"
 #include <fcntl.h>
 #include <unistd.h>
 
 #define STEP 5
-
-void	partialReader(const std::string& path, Request& request) {
-	int	fd = open(path.c_str(), O_RDONLY);
-	char	buffer[STEP];
-	ssize_t	byte;
-
-	while ((byte = read(fd, buffer, STEP)) > 0) {
-		request.append(buffer, byte);
-		request.processMsg();
-	}
-	close(fd);
-}
 
 void	createTestFile() {
 	std::ofstream	file("./TestGround/Header/mozillaHeader");
