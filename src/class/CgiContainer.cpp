@@ -7,10 +7,14 @@
 #include <sys/epoll.h>
 #include <unistd.h>
 #include <cstring>
+#include <sys/types.h>
+#include <sys/wait.h>
 
-CgiContainer::CgiContainer(int epollFd, ClientHandler& parent, int fd, int event) :
+CgiContainer::CgiContainer(int epollFd, ClientHandler& parent, int fd, int event, pid_t pid) :
 	AEventHandler(),
-	_state(0), _index(0), _parent(parent) {
+	_pid(pid), _state(0), _index(0), _parent(parent) {
+	if (fd < 0)
+        throw AEventHandler::HandlerException("Invalid File Descriptor passed to CGI");
 	_fd = fd;
 	_epollFd = epollFd;
 	Logger::record(SETUP) << "Creating CGIContainer...";
@@ -21,7 +25,15 @@ CgiContainer::CgiContainer(int epollFd, ClientHandler& parent, int fd, int event
 	_lastAlive = time(NULL);
 }
 
-CgiContainer::~CgiContainer() {}
+CgiContainer::~CgiContainer() 
+{
+	if (_fd != -1) 
+	{
+        epoll_ctl(_epollFd, EPOLL_CTL_DEL, _fd, NULL);
+        close(_fd);
+        _fd = -1;
+    }
+}
 
 int	CgiContainer::handleWrite() {
 	const byteVector&	body =_parent.getRequest().getBody();
@@ -42,35 +54,52 @@ int	CgiContainer::handleWrite() {
 int	CgiContainer::handleRead() {
 	unsigned char buffer[BUFFSIZE];
 	ssize_t	bytes = read(_fd, buffer, BUFFSIZE);
-	std::cout << "bytes: " << bytes;
+
 	if (bytes < 0)
 		return CGI_READ_KO;
-	_CgiResult.insert(_CgiResult.end(), buffer, buffer + bytes);
-	if (bytes < BUFFSIZE || bytes == 0)
+	if (bytes == 0)
 		return CGI_READ_END;
+	_CgiResult.insert(_CgiResult.end(), buffer, buffer + bytes);
 	return CGI_READ_OK;
 }
 
-int	CgiContainer::handleEvent(uint32_t event, WebServ& context) {
-	if (event & EPOLLIN) {
-		Logger::record(INFO) << "Reading from CGI...";
-		switch (handleRead()) {
-			case CGI_READ_KO:
-				Logger::record(INFO) << "Reading KO";
-				return CGI_KO;
-			case CGI_READ_OK:
-				Logger::record(INFO) << "Reading OK";
-				break;
-			case CGI_READ_END:
-				Logger::record(INFO) << "Building CGI response";
-				Response *response = new Response(OK, _CgiResult, "", true);
-				_parent.setResponse(response);
-				// Logger::record(INFO) << "CGI result: " << response->get_full_response().data();
-				_parent.activateEpoll(context.getEpoll(), EPOLLOUT);
-				return CGI_END;
-		}
+Response	*CgiContainer::handle_pid()
+{
+	int 		status;
+	int 		status_code = -1;
+	pid_t 		result;
+	Response	*response = NULL;
+
+	result = waitpid(this->_pid, &status, 0);
+	if (result == -1)
+	{
+		Logger::record(ERROR) << "111111";
+		response = new Response(INTERNAL_SERVER_ERROR);
 	}
-	else if (event & EPOLLOUT) {
+	else 
+	{
+		if (WIFEXITED(status)) 
+		{
+			status_code = WEXITSTATUS(status);
+			if (status_code == 0)
+				response = new Response(OK, this->_CgiResult, "", true);
+			else
+			{
+				Logger::record(ERROR) << "222222222";
+				response = new Response(INTERNAL_SERVER_ERROR);
+			}
+		} 
+		else if (WIFSIGNALED(status))
+			response = new Response(INTERNAL_SERVER_ERROR);
+	}
+	Logger::record(INFO) << "CGI status: " << status_code;
+	return response;
+}
+
+int	CgiContainer::handleEvent(uint32_t event, WebServ& context) {
+	bool force_end = false;
+
+	if (event & EPOLLOUT) {
 		Logger::record(INFO) << "Writing to CGI...";
 		switch (handleWrite()) {
 			case CGI_WRITE_KO: return CGI_KO;
@@ -78,9 +107,30 @@ int	CgiContainer::handleEvent(uint32_t event, WebServ& context) {
 			case CGI_WRITE_END:
 				Logger::record(INFO) << "Finished writing to CGI..";
 				epoll_ctl(context.getEpoll(), EPOLL_CTL_DEL, _fd, NULL);
+				close(_fd);
+				_fd = -1;
 				return CGI_WRITE_END;
 			default: break;
 		}
+	}
+	if (event & EPOLLIN) {
+		Logger::record(INFO) << "Reading from CGI...";
+		switch (handleRead()) {
+			case CGI_READ_KO: return CGI_KO;
+			case CGI_READ_OK: break;
+			case CGI_READ_END: force_end = true;
+		}
+	}
+	if (!force_end && (event & (EPOLLHUP | EPOLLERR))) {
+        Logger::record(INFO) << "Forcing CGI response building...";
+        force_end = true;
+    }
+	if (force_end) {
+		Logger::record(INFO) << "Building CGI response";
+		Response *response = this->handle_pid();
+		_parent.setResponse(response);
+		_parent.activateEpoll(context.getEpoll(), EPOLLOUT);
+		return CGI_END;
 	}
 	return CGI_OK;
 }

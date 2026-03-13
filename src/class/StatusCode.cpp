@@ -22,5 +22,6 @@ void init_status_map()
     g_status_map[REQUEST_HEADER_FIELD_TOO_LARGE] = "Request Header Fields Too Large";
     g_status_map[INTERNAL_SERVER_ERROR] = "Internal Server Error";
     g_status_map[NOT_IMPLEMENTED] = "Not Implemented";
+    g_status_map[GATEWAY_TIMEOUT] = "Gateway Timeout";
     g_status_map[HTTP_VERSION_NOT_SUPPORTED] = "HTTP Version Not Supported";
 }

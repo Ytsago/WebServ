@@ -7,22 +7,24 @@
 class CgiContainer : public AEventHandler 
 {
 	private:
-		int	_epollFd;
-		int	_state;
-		size_t	_index;
+		int				_epollFd;
+		pid_t			_pid;
+		int				_state;
+		size_t			_index;
 		ClientHandler&	_parent;
-		byteVector	_CgiResult;
+		byteVector		_CgiResult;
 
 	public:
-		CgiContainer(int epollFd, ClientHandler& parent, int fd, int event);
+		CgiContainer(int epollFd, ClientHandler& parent, int fd, int event, pid_t pid);
 		~CgiContainer();
 		CgiContainer(const CgiContainer &other);
 		CgiContainer &operator=(const CgiContainer &other);
 
-		int		handleEvent(uint32_t event, WebServ &context);
-		int		handleWrite();
-		int		handleRead();
-		int		get_type() const;
+		int			handleEvent(uint32_t event, WebServ &context);
+		int			handleWrite();
+		int			handleRead();
+		int			get_type() const;
+		Response	*handle_pid();
 };
 
 #endif

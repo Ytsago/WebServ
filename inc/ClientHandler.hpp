@@ -21,7 +21,7 @@ class ClientHandler : public AEventHandler {
 
 		int		receiveMsg(WebServ& context);
         int		build_response(int epollFd);
-        void    handleWrite();
+        void    handleWrite(WebServ& context);
 
         const HttpRequest&	getRequest() const;
         Response&	getResponse();

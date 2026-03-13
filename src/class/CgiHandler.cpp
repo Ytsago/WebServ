@@ -105,28 +105,36 @@ static char **map_to_envp(std::map<std::string, std::string> &env)
 	return (envp);
 }
 
-t_pipe CgiHandler::execute_cgi(const ServerConfig &server, HttpRequest &request, LocationConfig &location, std::string &path)
+#include <cerrno>
+#include <cstring>
+
+t_pipe CgiHandler::execute_cgi(const ServerConfig &server, HttpRequest &request, LocationConfig &location, std::string &path, pid_t &pid)
 {
 	std::map<std::string, std::string> env;
 	std::vector<char>	body = request.getBody();
 	char	**envp;
-	int		pid;
 	int		pipefd[4];
 
 	env = build_env(server, request, location, path);
 	envp = map_to_envp(env);
+	if (access(path.c_str(), X_OK) == -1)
+	{
+		// Affiche le chemin entre guillemets pour voir s'il n'y a pas un espace caché
+		Logger::record(ERROR) << "Access failed for [" << path << "] : " << std::strerror(errno);
+		pid = -1;
+		return (t_pipe){-1, -1};
+	}
 	for (int i = 0; i < 2; i++)
 	{
 		if (pipe(pipefd + i * 2) == -1)
 		{
-			//exception
+			pid = -1;
+			return (t_pipe) {-1, -1};
 		}
 	}
 	pid = fork();
 	if (pid == -1)
-	{
-		//exception
-	}
+		return (t_pipe) {-1, -1};
 	else if (pid == 0)
 	{
 		dup_fd(pipefd[0], STDIN_FILENO);

@@ -86,10 +86,19 @@ int	ClientHandler::receiveMsg(WebServ& context) {
 				Logger::record(INFO) << "Cgi detected, processing...";
 				this->_response = handler.handle_request();
 				std::string	path = handler.get_cgi_path();
-				// std::string	path = handler.get_file_path();
-				t_pipe	fds = CgiHandler::execute_cgi(handler.getServer(), *_request, handler.getLocation(), path);
-				_cgiIn = new CgiContainer(context.getEpoll(), *this, fds.inFd, EPOLLOUT);
-				_cgiOut = new CgiContainer(context.getEpoll(), *this, fds.outFd, EPOLLIN);
+				pid_t pid;
+				t_pipe	fds = CgiHandler::execute_cgi(handler.getServer(), *_request, handler.getLocation(), path, pid);
+				if (pid == -1)
+				{
+					Logger::record(ERROR) << "CGI could not be created";
+					this->_response = new Response(INTERNAL_SERVER_ERROR);
+					if (_response) delete _response;
+					this->_state = SENDING_RESPONSE;
+					this->activateEpoll(context.getEpoll(), EPOLLOUT);
+					return CLT_MSG_END;
+				}
+				_cgiIn = new CgiContainer(context.getEpoll(), *this, fds.inFd, EPOLLOUT, pid);
+				_cgiOut = new CgiContainer(context.getEpoll(), *this, fds.outFd, EPOLLIN, pid);
 				_state = WAITING_CGI;
 			}
             else
@@ -130,32 +139,35 @@ int ClientHandler::build_response(int epollFd)
     //switch to epollout
 }
 
-void ClientHandler::handleWrite() 
+void ClientHandler::handleWrite(WebServ& context) 
 {
     if (this->_state != SENDING_RESPONSE || !this->_response) 
         return;
     byteVector &resStr = this->_response->get_full_response();
-		//   if (resStr.size() == _bytesSent || resStr.size()) {
-		//   	this->_state = END;
-		// this->_bytesSent = 0;
-		//   }
-    // else {
-    	ssize_t sent = send(this->_fd, resStr.data() + this->_bytesSent, resStr.size() - this->_bytesSent, 0);
-    	if (sent > 0) 
-    	{
-        	this->_bytesSent += sent;
-        	if (this->_bytesSent >= resStr.size())
-			{
-            	this->_state = END;
-				this->_bytesSent = 0;
-			}
-    	}
-    	else if (sent == -1)
+	ssize_t sent = send(this->_fd, resStr.data() + this->_bytesSent, resStr.size() - this->_bytesSent, 0);
+	if (sent > 0) 
+	{
+		this->_bytesSent += sent;
+		if (this->_bytesSent >= resStr.size())
 		{
-        	this->_state = END;
+			Logger::record(INFO) << "Response sent to client " << _fd;
+			this->_state = END;
 			this->_bytesSent = 0;
+			delete _response;
+            _response = NULL;
+            _parser.reset(); 
+            epoll_event ev;
+            ev.events = EPOLLIN;
+            ev.data.ptr = this;
+            epoll_ctl(context.getEpoll(), EPOLL_CTL_MOD, _fd, &ev);
+            this->_state = READING_REQUEST;
 		}
-	// }
+	}
+	else if (sent == -1)
+	{
+		this->_state = END;
+		this->_bytesSent = 0;
+	}
 }
 
 int	ClientHandler::handleEvent(uint32_t event, WebServ& context) {
@@ -180,7 +192,7 @@ int	ClientHandler::handleEvent(uint32_t event, WebServ& context) {
 				return 0;
 		}
 	}
-	else if (event == EPOLLOUT) handleWrite();
+	else if (event == EPOLLOUT) handleWrite(context);
 	if (_state == END && this->_request->getHeaders()["Connection"] != "keep-alive")
 		return RM_CLT;
 	return CLT_MSG_END;
