@@ -105,9 +105,6 @@ static char **map_to_envp(std::map<std::string, std::string> &env)
 	return (envp);
 }
 
-#include <cerrno>
-#include <cstring>
-
 t_pipe CgiHandler::execute_cgi(const ServerConfig &server, HttpRequest &request, LocationConfig &location, std::string &path, pid_t &pid)
 {
 	std::map<std::string, std::string> env;
@@ -119,8 +116,6 @@ t_pipe CgiHandler::execute_cgi(const ServerConfig &server, HttpRequest &request,
 	envp = map_to_envp(env);
 	if (access(path.c_str(), X_OK) == -1)
 	{
-		// Affiche le chemin entre guillemets pour voir s'il n'y a pas un espace caché
-		Logger::record(ERROR) << "Access failed for [" << path << "] : " << std::strerror(errno);
 		pid = -1;
 		return (t_pipe){-1, -1};
 	}
