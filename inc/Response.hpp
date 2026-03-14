@@ -14,11 +14,11 @@ class Response
 	private:
 
 		byteVector	_full_response;
-		size_t		cursor;
+		int			_status_code;
 
 	public:
 
-		Response(int code, byteVector body = byteVector(), std::string path = "", bool connection = true);
+		Response(int code, byteVector body = byteVector(), std::string path = "", bool connection = false);
 		~Response();
 		Response(const Response &other);
 		Response &operator=(const Response &other);

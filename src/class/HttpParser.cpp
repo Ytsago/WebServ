@@ -112,6 +112,8 @@ std::string	extractBoundary(std::string& header) {
 
 void	HttpParser::processHeader() {
 	std::string header;
+	if (getHeader("host").empty())
+		throw BAD_REQUEST;
 	if (!(header = getHeader("transfer-encoding")).empty()) {
 		if (header != "chunked")
 			throw HttpRequestParsingException(NOT_IMPLEMENTED);

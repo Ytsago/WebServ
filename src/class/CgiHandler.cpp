@@ -128,15 +128,19 @@ t_pipe CgiHandler::execute_cgi(const ServerConfig &server, HttpRequest &request,
 		}
 	}
 	pid = fork();
-	if (pid == -1)
+	if (pid == -1) {
+		clear_envp(envp);
+		close_pipes(pipefd);
 		return (t_pipe) {-1, -1};
+	}
 	else if (pid == 0)
 	{
+		std::string	cgi_path = location.get_cgi_path();
 		dup_fd(pipefd[0], STDIN_FILENO);
 		dup_fd(pipefd[3], STDOUT_FILENO);
 		close_pipes(pipefd);
 		char **argv = new char*[3];
-		argv[0] = const_cast<char *>(location.get_cgi_path().c_str());
+		argv[0] = const_cast<char *>(cgi_path.c_str());
 		argv[1] = const_cast<char *>(path.c_str());
 		argv[2] = NULL;
 		execve(location.get_cgi_path().c_str(), argv, envp);
@@ -144,6 +148,7 @@ t_pipe CgiHandler::execute_cgi(const ServerConfig &server, HttpRequest &request,
 		clear_envp(envp);
 		exit(0);
 	}
+	clear_envp(envp);
 	close (pipefd[0]);
 	close (pipefd[3]);
 	return (t_pipe) {pipefd[1], pipefd[2]};

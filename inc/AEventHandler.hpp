@@ -15,6 +15,7 @@ enum	e_retState {
 	CLT_MSG_RCV,
 	CLT_MSG_END,
 	CLT_MSG_ERR,
+	CLT_WTG_CGI,
 	RM_CLT,
 	EPOLL_CTL_OK,
 	EPOLL_CTL_FAIL,
@@ -53,7 +54,7 @@ class AEventHandler {
 		int	getSocket() const;
 		const time_t&	getTimeout() const;
 		std::list<AEventHandler*>::iterator	getTimeoutIt();	
-		void	setTimeoutIt(std::list<AEventHandler*>::iterator& it);
+		void	setTimeoutIt(std::list<AEventHandler*>::iterator it);
 };
 
 #endif

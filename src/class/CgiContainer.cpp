@@ -27,12 +27,13 @@ CgiContainer::CgiContainer(int epollFd, ClientHandler& parent, int fd, int event
 
 CgiContainer::~CgiContainer() 
 {
-	if (_fd != -1) 
-	{
-        epoll_ctl(_epollFd, EPOLL_CTL_DEL, _fd, NULL);
-        close(_fd);
-        _fd = -1;
-    }
+	// if (_fd != -1) 
+	// {
+	//        epoll_ctl(_epollFd, EPOLL_CTL_DEL, _fd, NULL);
+	//        close(_fd);
+	//        _fd = -1;
+	//    }
+	// _parent.unregisterCgi(this);
 }
 
 int	CgiContainer::handleWrite() {
@@ -99,6 +100,8 @@ Response	*CgiContainer::handle_pid()
 int	CgiContainer::handleEvent(uint32_t event, WebServ& context) {
 	bool force_end = false;
 
+	_lastAlive = time(NULL);
+	context.getTimeList().splice(context.getTimeList().begin(), context.getTimeList(), timeout_it);
 	if (event & EPOLLOUT) {
 		Logger::record(INFO) << "Writing to CGI...";
 		switch (handleWrite()) {
@@ -106,10 +109,10 @@ int	CgiContainer::handleEvent(uint32_t event, WebServ& context) {
 			case CGI_WRITE_OK: break;
 			case CGI_WRITE_END:
 				Logger::record(INFO) << "Finished writing to CGI..";
-				epoll_ctl(context.getEpoll(), EPOLL_CTL_DEL, _fd, NULL);
-				close(_fd);
-				_fd = -1;
-				return CGI_WRITE_END;
+				// epoll_ctl(context.getEpoll(), EPOLL_CTL_DEL, _fd, NULL);
+				// close(_fd);
+				// _fd = -1;
+				return CGI_END;
 			default: break;
 		}
 	}

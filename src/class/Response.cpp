@@ -7,7 +7,7 @@
 
 Response::Response(int code, byteVector body, std::string path, bool connection)
 {
-	this->cursor = 0;
+	_status_code = code;
 	std::string status = "Unknown Status";
 	if (g_status_map.count(code))
         status = g_status_map[code];
@@ -84,12 +84,15 @@ void	Response::build_header(size_t body_size, std::string path, bool connection)
 	std::string	buffer;
 
 	str_size = int_to_string(body_size);
-	buffer += 
-	"Content-Length: " + str_size + "\r\n" +
-	"Content-Type: " + get_mime_type(path) + "\r\n" +
-	"Date: " + get_http_date() + "\r\n" +
-	"Connection: " + (connection ? "keep-alive" : "close") +
-	"\r\n\r\n";
+	if (_status_code != 204 && _status_code != 304)
+		buffer += "Content-Length: " + str_size + "\r\n";
+	if (body_size > 0)
+		buffer += "Content-Type: " + get_mime_type(path) + "\r\n";
+
+	"Date: " + get_http_date() + "\r\n";
+	bool	shouldClose = !connection || _status_code > 500;
+		buffer += "Connection: " + std::string(shouldClose ? "close" : "keep_alive") + "\r\n";
+	buffer += "\r\n";
 	this->_full_response.insert(this->_full_response.end(), buffer.begin(), buffer.end());
 }
 

@@ -16,36 +16,45 @@ class ClientHandler : public AEventHandler {
 		~ClientHandler();
 		ClientHandler(WebServ& context, ServerHandler& host);
 
-		int	handleEvent(uint32_t event, WebServ& context);
+	int	handleEvent(uint32_t event, WebServ& context);
         int	activateEpoll(int epollFd, int event);
 
-		int		receiveMsg(WebServ& context);
-        int		build_response(int epollFd);
+	int	receiveMsg(WebServ& context);
+        int	build_response(int epollFd);
         void    handleWrite(WebServ& context);
 
         const HttpRequest&	getRequest() const;
-        Response&	getResponse();
-        void        setResponse(Response *response);
-		enum ClientState 
+        Response&		getResponse();
+        void        		setResponse(Response *response);
+
+        void	resetClient(int epollFd);
+        void	unregisterCgi(CgiContainer* ptr);
+        bool	sendTimeout(WebServ& context);
+        std::vector<ServerConfig>::const_iterator	findHostConf();
+
+	enum ClientState 
         {
-            READING_REQUEST,
-            WRITING_BODY,
-            PROCESSING,
-            WAITING_CGI,
-            SENDING_RESPONSE,
-            END
+		READING_REQUEST,
+		WRITING_BODY,
+        	PROCESSING,
+        	WAITING_CGI,
+		SENDING_RESPONSE,
+		TIMED_OUT,
+		END
         };
 
 	private:
-		const std::vector<ServerConfig>*	_hostConf;
-		HttpParser		_parser;
-		HttpRequest*	_request;
-		ClientState     _state;
+	int	_pid;
+	const std::vector<ServerConfig>*	_hostConf;
+	HttpParser		_parser;
+	HttpRequest*	_request;
+	ClientState     _state;
         Response        *_response;
         FileHandler     _fileHandler;
         size_t          _bytesSent;
         CgiContainer	*_cgiIn;
         CgiContainer	*_cgiOut;
+        bool		_keepAlive;
 
 };
 

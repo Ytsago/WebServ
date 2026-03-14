@@ -28,7 +28,7 @@ std::list<AEventHandler*>::iterator	AEventHandler::getTimeoutIt() {return timeou
 const time_t&	AEventHandler::getTimeout() const {return _lastAlive;}
 
 void	AEventHandler::setSocket(int fd) {_fd = fd;}
-void	AEventHandler::setTimeoutIt(std::list<AEventHandler*>::iterator& it) {timeout_it = it;}
+void	AEventHandler::setTimeoutIt(std::list<AEventHandler*>::iterator it) {timeout_it = it;}
 
 AEventHandler::~AEventHandler() {
 	if (_fd != -1) close(_fd);

@@ -14,6 +14,7 @@ void init_status_map()
     g_status_map[FORBIDDEN] = "Forbidden";
     g_status_map[NOT_FOUND] = "Not Found";
     g_status_map[METHOD_NOT_ALLOWED] = "Method Not Allowed";
+    g_status_map[REQUEST_TIMEOUT] = "Request Timeout";
     g_status_map[LENGHT_REQUIRED] = "Length Required";
     g_status_map[CONTENT_TOO_LARGE] = "Content Too Large";
     g_status_map[URI_TOO_LONG] = "URI Too Long";

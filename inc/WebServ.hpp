@@ -7,7 +7,7 @@
 
 #define BUFFSIZE 4096
 #define MAXEVENT 1024
-#define TIMEOUT 100
+#define TIMEOUT 10
 
 class AEventHandler;
 

@@ -31,7 +31,9 @@ const std::string&	HttpRequest::getMethod() const {return _method;}
 const std::string&	HttpRequest::getUri() const {return _uri;}
 const HeaderMap& HttpRequest::getHeaders() const {return _header;}
 const std::vector<char>&	HttpRequest::getBody() const {return _body;}
+ServerConfig*	HttpRequest::getHost() {return _host;}
 
+void	HttpRequest::setHost(ServerConfig& host) {_host = &host;}
 HttpRequest::~HttpRequest() {
 
 };

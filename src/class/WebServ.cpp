@@ -1,5 +1,6 @@
 #include "WebServ.hpp"
 #include "AEventHandler.hpp"
+#include "ClientHandler.hpp"
 #include "ServerHandler.hpp"
 #include "Logger.hpp"
 #include <sys/epoll.h>
@@ -71,12 +72,20 @@ int	WebServ::setConfig(const char* arg) {
 }
 
 void	WebServ::checkTimeout() {
-	std::list<AEventHandler*>::reverse_iterator rit = timeout.rbegin();
+	time_t	now = time(NULL);
+	AEventHandler*	curr;
 
-	for (; rit != timeout.rend(); rit++) {
-		AEventHandler*	curr = *rit;
-		if (std::time(NULL) - curr->getTimeout() > TIMEOUT)
-			removeHandler(curr);
+	while (!timeout.empty()) {
+		curr = timeout.back();
+		if (now - curr->getTimeout() > TIMEOUT) {
+			Logger::record(WARNING) << curr->getSocket() << " was timed out.";
+			ClientHandler*	clt = dynamic_cast<ClientHandler*>(curr);
+			if (!clt)
+				removeHandler(curr);
+			else
+				if (clt->sendTimeout(*this))
+					removeHandler(curr);
+		}
 		else
 			return ;
 	}
@@ -90,7 +99,7 @@ void	WebServ::run(const char *arg) {
 	initHost();
 
 	while(g_running) {
-		int nfds = epoll_wait(epollFd, events, MAXEVENT, TIMEOUT);
+		int nfds = epoll_wait(epollFd, events, MAXEVENT, 1000);
 		for (int i = 0; i < nfds; i++) {
 			AEventHandler* incoming = reinterpret_cast<AEventHandler*>(events[i].data.ptr);
 			switch (incoming->handleEvent(events[i].events, *this)) {
@@ -107,14 +116,11 @@ void	WebServ::run(const char *arg) {
 					//TODO internal server error
 					removeHandler(incoming);
 					break;
-				case CGI_WRITE_END:
-					removeHandler(incoming);
-					break;
 				default:
 					break ;
 			}
 		}
-		// checkTimeout();
+		checkTimeout();
 	}
 }
 
@@ -122,8 +128,8 @@ void WebServ::removeHandler(AEventHandler* handler) {
 	Logger::record(INFO) << "Removing handler: " << handler->getSocket();
 	if (!handler) return;
 	epoll_ctl(epollFd, EPOLL_CTL_DEL, handler->getSocket(), NULL);
-	// timeout.erase(handler->getTimeoutIt());
-	// registery.erase(handler->getSocket());
+	timeout.erase(handler->getTimeoutIt());
+	registery.erase(handler->getSocket());
 	delete handler;
 }
 
