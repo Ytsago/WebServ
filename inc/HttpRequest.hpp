@@ -22,9 +22,6 @@ class HttpRequest {
 		const HeaderMap& getHeaders() const;
 		const std::vector<char>&	getBody() const;
 		std::string			getHeader(const std::string& key) const;
-		ServerConfig*		getHost();
-
-		void	setHost(ServerConfig& host);
 
 	private:
 		std::string	_method;
@@ -32,7 +29,6 @@ class HttpRequest {
 		HeaderMap	_header;
 		std::vector<char> _body;
 		size_t	_contentLength;
-		ServerConfig*	_host;
 	friend class HttpParser;
 	friend class RequestHandlerTester;
 	friend class FileHandlerTester;

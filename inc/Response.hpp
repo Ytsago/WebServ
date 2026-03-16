@@ -24,6 +24,7 @@ class Response
 		Response &operator=(const Response &other);
 
 		byteVector	&get_full_response();
+		int			getStatusCode() const;
 	
 		void	build_entry_line(int code, std::string status);
 		void	build_header(size_t body_size, std::string path, bool connection);

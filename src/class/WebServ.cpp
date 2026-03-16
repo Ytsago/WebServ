@@ -25,6 +25,7 @@ WebServ::WebServ() {
 
 	Logger::record(SETUP) << "Creating the singal handler...";
 	signal(SIGINT, sigHandler);
+	signal(SIGPIPE, sigHandler);
 
 	Logger::record(SUCCESS) << "You can safely quit the program with CTRL + C";
 }

@@ -73,10 +73,7 @@ Response	*CgiContainer::handle_pid()
 
 	result = waitpid(this->_pid, &status, 0);
 	if (result == -1)
-	{
-		Logger::record(ERROR) << "111111";
 		response = new Response(INTERNAL_SERVER_ERROR);
-	}
 	else 
 	{
 		if (WIFEXITED(status)) 
@@ -85,10 +82,7 @@ Response	*CgiContainer::handle_pid()
 			if (status_code == 0)
 				response = new Response(OK, this->_CgiResult, "", true);
 			else
-			{
-				Logger::record(ERROR) << "222222222";
 				response = new Response(INTERNAL_SERVER_ERROR);
-			}
 		} 
 		else if (WIFSIGNALED(status))
 			response = new Response(INTERNAL_SERVER_ERROR);

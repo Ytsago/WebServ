@@ -37,8 +37,9 @@ bool	HttpParser::parseRequestLine() {
 	std::vector<char>::iterator	itEndLine = std::search(itStart, m_readBuf.end(), "\r\n", ("\r\n") +2);
 
 	if (itEndLine == m_readBuf.end()) {
-		if (m_readBuf.size() - m_cursor > 2048)
+		if (m_readBuf.size() - m_cursor > 2048) {
 			throw HttpRequestParsingException(URI_TOO_LONG);
+		}
 		return false;
 	}
 	
@@ -124,7 +125,6 @@ void	HttpParser::processHeader() {
 		long	val;
 		val = std::strtol(header.c_str(), &endptr, 10);
 		if (*endptr != '\0' || val < 0 || val > MAX_BODY_SIZE) {
-			Logger::record(ERROR) << "3";
 			throw HttpRequestParsingException(BAD_REQUEST);
 		}
 		m_contentLength = static_cast<size_t>(val);
@@ -229,18 +229,6 @@ bool	HttpParser::parseBody() {
 
 	if (available > 0) {
 		size_t	toCopy = (available < bytesNeeded) ? available : bytesNeeded;
-		// switch (m_type) {
-		// 	case TEXT:
-		// 		m_body.insert(m_body.end(), m_readBuf.begin() + m_cursor, m_readBuf.begin() + toCopy+ m_cursor);
-		// 		break ;
-		// 	case APPLICATION:
-		// 		throw HttpRequestParsingException(UNSUPORTED_MEDIA_TYPE);
-		// 	case MULTIPART:
-		// 		break ;
-		// 	default:
-		// 		throw HttpRequestParsingException(UNSUPORTED_MEDIA_TYPE);
-		// }
-		m_body.insert(m_body.end(), m_readBuf.begin() + m_cursor, m_readBuf.begin() + toCopy+ m_cursor);
 		m_cursor += toCopy;
 		m_bodySize += toCopy;
 		if (m_type == MULTIPART)
@@ -268,6 +256,12 @@ void	HttpParser::reset() {
 	m_state = REQUEST_LINE;
 	m_type = NONE;
 	m_bodySize = 0;
+	m_body = byteVector();
+	m_method = std::string();
+	m_headers = HeaderMap();
+	m_path = std::string();
+	m_subtype = std::string();
+	m_boundary = std::string();
 }
 
 HttpRequest*	HttpParser::generateRequest() {

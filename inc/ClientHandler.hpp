@@ -30,7 +30,7 @@ class ClientHandler : public AEventHandler {
         void	resetClient(int epollFd);
         void	unregisterCgi(CgiContainer* ptr);
         bool	sendTimeout(WebServ& context);
-        std::vector<ServerConfig>::const_iterator	findHostConf();
+        const ServerConfig*	findHostConf();
 
 	enum ClientState 
         {
@@ -46,6 +46,7 @@ class ClientHandler : public AEventHandler {
 	private:
 	int	_pid;
 	const std::vector<ServerConfig>*	_hostConf;
+	const ServerConfig*	_serverConf;
 	HttpParser		_parser;
 	HttpRequest*	_request;
 	ClientState     _state;

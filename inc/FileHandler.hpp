@@ -20,7 +20,7 @@ class FileHandler
 		};
 
 		FileHandler();
-		FileHandler(HttpRequest &request, LocationConfig &location, std::string &content_type);
+		FileHandler(HttpRequest &request, const ServerConfig *server, std::string &content_type);
 		FileHandler&	operator=(const FileHandler& other);
 		~FileHandler();
 		
@@ -29,9 +29,8 @@ class FileHandler
 
 	private:
 	
-		// HttpRequest			&_request;
-		// LocationConfig		&_location;
-		// std::string			&_contentType;
+		const ServerConfig*		_server;
+		size_t				_bodySize;
 		std::string			_boundary;
 		std::string			_filename;
 		std::string			_uploadPath;

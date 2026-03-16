@@ -1,4 +1,5 @@
 #include "FileHandler.hpp"
+#include "HttpParser.hpp"
 #include "Logger.hpp"
 #include <algorithm>
 #include <unistd.h>
@@ -7,16 +8,12 @@
 
 FileHandler::FileHandler() : _fileFd(-1) {}
 
-FileHandler::FileHandler(HttpRequest &request, LocationConfig &location, std::string &content_type) :
-	// _request(request),
-	// _location(location),
-	// _contentType(content_type),
+FileHandler::FileHandler(HttpRequest &request, const ServerConfig *server, std::string &content_type) :
+	_server(server),
+	_bodySize(0),
 	_state(SEARCH_BOUNDARY),
 	_fileFd(-1)
 {
-	(void)location;
-	(void)request;
-	(void)content_type;
 	if (content_type.find("multipart/form-data") != std::string::npos)
 	{
 		std::string h_content = request.getHeader("Content-Type");
@@ -24,8 +21,8 @@ FileHandler::FileHandler(HttpRequest &request, LocationConfig &location, std::st
 		if (pos != std::string::npos)
 			this->_boundary = "--" + h_content.substr(pos + 9);
 	}
-	// Le chemin d'upload devrait idéalement venir de la configuration de la Location
-	this->_uploadPath = "./website/uploads/"; 
+	this->_uploadPath = "./" + _server->get_root() + "uploads/";
+	Logger::record(DEBUG) << _uploadPath;
 }
 
 FileHandler&	FileHandler::operator=(const FileHandler& other) {
@@ -36,6 +33,8 @@ FileHandler&	FileHandler::operator=(const FileHandler& other) {
 		_buffer = other._buffer;
 		_filename = other._filename;
 		_uploadPath = other._uploadPath;
+		_server = other._server;
+		_bodySize = other._bodySize;
 	}
 	return (*this);
 }
@@ -76,21 +75,18 @@ static std::string extract_filename(std::vector<char>::iterator begin, std::vect
 	return (sanitize_filename(filename));
 }
 
-// static void	print_buf(std::vector<char> &buf)
-// {
-// 	for (std::vector<char>::iterator ite = buf.begin(); ite != buf.end(); ite++)
-// 		std::cout << *ite;
-// 	std::cout << "+++++++++++++++++++++\n";
-// }
-
-//TODO check if FD > 0
 void FileHandler::multiparse(const std::vector<char> &chunk) 
 {
+	Logger::record(DEBUG) << "Multipart... " << chunk.size();
 	this->_buffer.insert(this->_buffer.end(), chunk.begin(), chunk.end());
+	_bodySize += _buffer.size();
+	if (_bodySize >= _server->get_client_max_body_size())
+		throw (HttpParser::HttpRequestParsingException(CONTENT_TOO_LARGE));
 	while (true) 
 	{
 		if (this->_state == SEARCH_BOUNDARY) 
 		{
+			Logger::record(INFO) << "Multipart: searching boundary...";
 			std::vector<char>::iterator it = std::search(this->_buffer.begin(), this->_buffer.end(), this->_boundary.begin(), this->_boundary.end());
 			if (it == this->_buffer.end()) 
 				break;
@@ -99,6 +95,7 @@ void FileHandler::multiparse(const std::vector<char> &chunk)
 		}
 		if (this->_state == PARSE_HEADERS) 
 		{
+			Logger::record(INFO) << "Multipart: Parsing headers...";
 			const char *del = "\r\n\r\n";
 			std::vector<char>::iterator it = std::search(this->_buffer.begin(), this->_buffer.end(), del, del + 4);
 			if (it == this->_buffer.end()) 
@@ -112,6 +109,7 @@ void FileHandler::multiparse(const std::vector<char> &chunk)
 		}
 		if (this->_state == WRITING_DATA)
 		{
+			Logger::record(INFO) << "Multipart: Writing data...";
 			const char *end_boundary = "--";
 			std::vector<char>::iterator it = std::search(this->_buffer.begin(),this-> _buffer.end(), this->_boundary.begin(), this->_boundary.end());
 			if (it != _buffer.end())

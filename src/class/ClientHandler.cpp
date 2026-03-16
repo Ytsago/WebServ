@@ -47,19 +47,19 @@ Response&	ClientHandler::getResponse() { return *_response;}
 
 void	ClientHandler::setResponse(Response *response) {if (_response) delete _response; _response = response;}
 
-std::vector<ServerConfig>::const_iterator	ClientHandler::findHostConf() {
+const ServerConfig*	ClientHandler::findHostConf() {
 	std::vector<ServerConfig>::const_iterator	it = _hostConf->begin();
 
 	for (; it != _hostConf->end(); it++) {
 		std::string	host = it->get_host();
 		strLower(host);
 		std::string	hostWithPort = host + ":" + int_to_string(it->get_listen_port());
-		Logger::record(DEBUG) << host << ", " << hostWithPort << ", " << _request->getHeaders()["host"] << "\n"
-			<< hostWithPort.size() << ", " << _request->getHeaders()["host"].size();
+		// Logger::record(DEBUG) << host << ", " << hostWithPort << ", " << _request->getHeaders()["host"] << "\n"
+		// 	<< hostWithPort.size() << ", " << _request->getHeaders()["host"].size();
 		if (host == _request->getHeaders()["host"] || hostWithPort == _request->getHeaders()["host"])
-			return it;
+			return &(*it);
 	}
-	return _hostConf->begin();
+	return &(*_hostConf->begin());
 }
 
 int	ClientHandler::receiveMsg(WebServ& context) {
@@ -93,23 +93,34 @@ int	ClientHandler::receiveMsg(WebServ& context) {
         {
         	if (_request) delete(_request);
         	_request = _parser.generateRequest();
-        	if (_request->getHeaders()["Connection-type"] == "keep-alive")
+        	if (_request->getHeaders()["Connection"] == "keep-alive") {
         		_keepAlive = true;
+        	}
         	else
         		_keepAlive = false;
-        	ServerConfig	serverHost = *findHostConf();
-        	_request->setHost(serverHost);
+        	_serverConf = findHostConf();
+        	// _request->setHost(_serverConf);
         	Logger::record(INFO) << "Processing request...";
-            RequestHandler handler(*_request->getHost(), *_request, context.getEpoll());
+            RequestHandler handler(*_serverConf, *_request, context.getEpoll());
             std::string contentType;
 			std::string	ext;
             if (handler.setupUpload(contentType)) 
             {
             	Logger::record(INFO) << "Downloading file...";
-                this->_fileHandler = FileHandler(*_request, handler.getLocation(), contentType);
+                this->_fileHandler = FileHandler(*_request, _serverConf, contentType);
+                Logger::record(DEBUG) << _serverConf->get_client_max_body_size();
                 this->_state = WRITING_BODY;
-                if (!this->_request->getBody().empty())
+                if (!this->_request->getBody().empty()) {
+                	// try {
                     this->_fileHandler.multiparse(this->_request->getBody());
+						//               } catch (HttpParser::HttpRequestParsingException &e) {
+						//               	Logger::record(WARNING) << "PROUT";
+						// Logger::record(ERROR) << e.what();
+						// this->_response = new Response(e.e_status);
+						// this->_state = SENDING_RESPONSE;
+						// return CLT_MSG_END;
+						//               }
+                }
             }
 			else if (handler.get_cgi_ext(ext)) {
 				Logger::record(INFO) << "Cgi detected, processing...";
@@ -144,7 +155,15 @@ int	ClientHandler::receiveMsg(WebServ& context) {
 	else if (this->_state == WRITING_BODY) 
     {
         std::vector<char> chunk(buffer, buffer + bytes);
+        // try {
         this->_fileHandler.multiparse(chunk);
+			//      } catch (HttpParser::HttpRequestParsingException &e) {
+			//          Logger::record(WARNING) << "PROUT";
+			// Logger::record(ERROR) << e.what();
+			// this->_response = new Response(e.e_status);
+			// this->_state = SENDING_RESPONSE;
+			// return CLT_MSG_END;
+			//      }
         if (this->_fileHandler.getState() == FileHandler::END)
             return build_response(context.getEpoll());
     }
@@ -163,7 +182,7 @@ int	ClientHandler::receiveMsg(WebServ& context) {
 int ClientHandler::build_response(int epollFd) 
 {
 	Logger::record(INFO) << "Building response...";
-    RequestHandler handler(*_request->getHost(), *_request, epollFd);
+    RequestHandler handler(*_serverConf, *_request, epollFd);
     if (_response) delete _response;
    	this->_response = handler.handle_request();
     this->_state = SENDING_RESPONSE;
@@ -179,7 +198,7 @@ void ClientHandler::handleWrite(WebServ& context)
         return;
     }
     byteVector &resStr = this->_response->get_full_response();
-	ssize_t sent = send(this->_fd, resStr.data() + this->_bytesSent, resStr.size() - this->_bytesSent, 0);
+	ssize_t sent = send(this->_fd, resStr.data() + this->_bytesSent, resStr.size() - this->_bytesSent, MSG_NOSIGNAL);
 	if (sent > 0) 
 	{
 		_lastAlive = std::time(NULL);
@@ -188,7 +207,6 @@ void ClientHandler::handleWrite(WebServ& context)
 		if (this->_bytesSent >= resStr.size())
 		{
 			Logger::record(INFO) << "Response sent to client " << _fd;
-			this->_state = END;
 			this->_bytesSent = 0;
 			delete _response;
             _response = NULL;
@@ -197,7 +215,7 @@ void ClientHandler::handleWrite(WebServ& context)
             ev.events = EPOLLIN;
             ev.data.ptr = this;
             epoll_ctl(context.getEpoll(), EPOLL_CTL_MOD, _fd, &ev);
-            this->_state = READING_REQUEST;
+			this->_state = END;
 		}
 	}
 	else if (sent <= 0)
@@ -222,10 +240,12 @@ void	ClientHandler::resetClient(int epollFd) {
 	_bytesSent = 0;
 	_cgiIn = NULL;
 	_cgiOut = NULL;
+	_parser.reset();
 
 	epoll_event	ev;
 	ev.events = EPOLLIN;
 	ev.data.ptr = this;
+	_serverConf = NULL;
 	epoll_ctl(epollFd, EPOLL_CTL_MOD, _fd, &ev);
 }
 
@@ -241,8 +261,11 @@ bool	ClientHandler::sendTimeout(WebServ& context) {
 		kill(_pid, SIGKILL);
 	if (_state != TIMED_OUT) {
 		if (_response) delete _response;
-		_response = new Response(REQUEST_TIMEOUT);
 		_keepAlive = false;
+		if (_pid != -1)
+			_response = new Response(GATEWAY_TIMEOUT);
+		else
+			_response = new Response(REQUEST_TIMEOUT);
 		_state = TIMED_OUT;
 		epoll_event ev;
 		ev.events = EPOLLOUT;
@@ -266,6 +289,8 @@ int	ClientHandler::handleEvent(uint32_t event, WebServ& context) {
 				ev.events = EPOLLOUT;
 				ev.data.ptr = this;
 				epoll_ctl(context.getEpoll(), EPOLL_CTL_MOD, _fd, &ev);
+				if (_response->getStatusCode() >= 400)
+					_keepAlive = false;
 				break;
 			case CLT_MSG_RCV:
 				return CLT_MSG_RCV;
