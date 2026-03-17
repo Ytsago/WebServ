@@ -229,6 +229,7 @@ bool	HttpParser::parseBody() {
 
 	if (available > 0) {
 		size_t	toCopy = (available < bytesNeeded) ? available : bytesNeeded;
+		m_body.insert(m_body.end(), m_readBuf.begin() + m_cursor, m_readBuf.begin() + toCopy+ m_cursor);
 		m_cursor += toCopy;
 		m_bodySize += toCopy;
 		if (m_type == MULTIPART)

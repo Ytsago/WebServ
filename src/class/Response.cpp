@@ -87,10 +87,10 @@ void	Response::build_header(size_t body_size, std::string path, bool connection)
 	std::string	body;
 
 	str_size = int_to_string(body_size);
-	if (_status_code >= 400)
+	if (_status_code >= 400 || _status_code == 301)
 		body = ERROR_PAGE + int_to_string(_status_code) + " "+ g_status_map[_status_code] + ERROR_PAGE_END;
 	if (_status_code != 204 && _status_code != 304) {
-		if (_status_code >= 400)
+		if (_status_code >= 400 || _status_code == 301)
 			str_size = int_to_string(body.size());
 		buffer += "Content-Length: " + str_size + "\r\n";
 	}
@@ -101,7 +101,7 @@ void	Response::build_header(size_t body_size, std::string path, bool connection)
 	bool	shouldClose = !connection || _status_code > 500;
 		buffer += "Connection: " + std::string(shouldClose ? "close" : "keep_alive") + "\r\n";
 	buffer += "\r\n";
-	if (_status_code >= 400)
+	if (_status_code >= 400 || _status_code == 301)
 		buffer += body;
 	this->_full_response.insert(this->_full_response.end(), buffer.begin(), buffer.end());
 }

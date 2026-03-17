@@ -227,6 +227,16 @@ LocationConfig	ConfigParser::parse_location(std::ifstream &file, std::string hea
 			location.set_is_cgi(true);
 			has_path = true;
 		}
+		else if (key == "return")
+		{
+			if (!(ss_line >> s_value) || s_value != "301")
+				throw ConfigException("Invalid redirection value", this->_lineCount);
+			if (!(ss_line >> s_value))
+				throw ConfigException("Invalid redirection value", this->_lineCount);
+			location.set_redirection(s_value);
+			location.set_is_redirection(true);
+			has_path = true;
+		}
 		else
 			throw ConfigException("Invalid location field", this->_lineCount);
 	}

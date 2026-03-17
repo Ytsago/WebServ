@@ -104,22 +104,28 @@ int	ClientHandler::receiveMsg(WebServ& context) {
             RequestHandler handler(*_serverConf, *_request, context.getEpoll());
             std::string contentType;
 			std::string	ext;
+        	Logger::record(DEBUG) << "URI: " << _request->getUri();
+			if (handler.is_redirection())
+			{
+        		Logger::record(INFO) << "Request is a redirection";
+				return build_response(context.getEpoll()); 
+			}
             if (handler.setupUpload(contentType)) 
             {
             	Logger::record(INFO) << "Downloading file...";
                 this->_fileHandler = FileHandler(*_request, _serverConf, contentType);
-                Logger::record(DEBUG) << _serverConf->get_client_max_body_size();
                 this->_state = WRITING_BODY;
                 if (!this->_request->getBody().empty()) {
-                	// try {
+                	try {
                     this->_fileHandler.multiparse(this->_request->getBody());
-						//               } catch (HttpParser::HttpRequestParsingException &e) {
-						//               	Logger::record(WARNING) << "PROUT";
-						// Logger::record(ERROR) << e.what();
-						// this->_response = new Response(e.e_status);
-						// this->_state = SENDING_RESPONSE;
-						// return CLT_MSG_END;
-						//               }
+					if (this->_fileHandler.getState() == FileHandler::END)
+						return build_response(context.getEpoll());
+					} catch (HttpParser::HttpRequestParsingException &e) {
+						Logger::record(ERROR) << e.what();
+						this->_response = new Response(e.e_status);
+						this->_state = SENDING_RESPONSE;
+						return CLT_MSG_END;
+					}
                 }
             }
 			else if (handler.get_cgi_ext(ext)) {
@@ -155,15 +161,14 @@ int	ClientHandler::receiveMsg(WebServ& context) {
 	else if (this->_state == WRITING_BODY) 
     {
         std::vector<char> chunk(buffer, buffer + bytes);
-        // try {
+        try {
         this->_fileHandler.multiparse(chunk);
-			//      } catch (HttpParser::HttpRequestParsingException &e) {
-			//          Logger::record(WARNING) << "PROUT";
-			// Logger::record(ERROR) << e.what();
-			// this->_response = new Response(e.e_status);
-			// this->_state = SENDING_RESPONSE;
-			// return CLT_MSG_END;
-			//      }
+		} catch (HttpParser::HttpRequestParsingException &e) {
+			Logger::record(ERROR) << e.what();
+			this->_response = new Response(e.e_status);
+			this->_state = SENDING_RESPONSE;
+			return CLT_MSG_END;
+		}
         if (this->_fileHandler.getState() == FileHandler::END)
             return build_response(context.getEpoll());
     }
@@ -184,7 +189,9 @@ int ClientHandler::build_response(int epollFd)
 	Logger::record(INFO) << "Building response...";
     RequestHandler handler(*_serverConf, *_request, epollFd);
     if (_response) delete _response;
+	// std::cout << "redir?: " << handler.is_redirection();
    	this->_response = handler.handle_request();
+	Logger::record(DEBUG) << this->_response->getStatusCode();
     this->_state = SENDING_RESPONSE;
     return CLT_MSG_END;
     //switch to epollout

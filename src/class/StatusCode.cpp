@@ -9,6 +9,7 @@ void init_status_map()
 	g_status_map[OK] = "OK";
 	g_status_map[CREATED] = "Created";
 	g_status_map[NO_CONTENT] = "No Content";
+	g_status_map[MOVED_PERMANENTLY] = "Moved Permanently";
     g_status_map[NOT_MODIFIED] = "Not Modified";
     g_status_map[BAD_REQUEST] = "Bad Request";
     g_status_map[FORBIDDEN] = "Forbidden";

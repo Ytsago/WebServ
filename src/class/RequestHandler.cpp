@@ -186,27 +186,30 @@ bool RequestHandler::setupUpload(std::string &content_type)
 	return this->get_upload_type(content_type);
 }
 
-Response* RequestHandler::handle_request()
+bool RequestHandler::is_redirection()
 {
-	std::string method = _request.getMethod();
-	if (method == "GET") 
-		return this->build_get_response();
-	if (method == "POST") 
-		return this->build_post_response();
-	if (method == "DELETE") 
-		return this->build_delete_response();
-	return new Response(METHOD_NOT_ALLOWED);
+	this->find_corresponding_location();
+	if (this->_location.is_redirection() == true)
+		return true;
+	return false;
 }
 
-Response* RequestHandler::build_get_response()
+Response* RequestHandler::handle_request()
 {
-	std::string		path;
-	byteVector		file;
+	std::string 	method = _request.getMethod();
+	std::string 	path;
+	byteVector 		body;
 	std::string		ext;
 
 	this->find_corresponding_location();
+	if (this->_location.is_redirection() == true)
+	{
+		path = this->_location.get_redirection();
+		body.insert(body.end(), path.begin(), path.end());
+		return new Response(MOVED_PERMANENTLY, body, path, false);
+	}
 	path = this->get_file_path();
-	if (!check_if_method_allowed(this->_location, "GET"))
+	if (!check_if_method_allowed(this->_location, method))
 		return new Response(METHOD_NOT_ALLOWED);
 	if (this->get_cgi_ext(ext))
 	{
@@ -214,6 +217,19 @@ Response* RequestHandler::build_get_response()
 			return new Response(NOT_IMPLEMENTED, byteVector(), path, true);
 		return new Response(OK, byteVector(), path, true);
 	}
+	if (method == "GET")
+		return this->build_get_response(path);
+	else if (method == "POST") 
+		return new Response(CREATED, byteVector(), path, true);
+	else if (method == "DELETE") 
+		return this->build_delete_response();
+	return new Response(METHOD_NOT_ALLOWED);
+}
+
+Response* RequestHandler::build_get_response(std::string &path)
+{
+	byteVector		file;
+
 	file = GetFile(path);
 	if (file.empty() || access(path.c_str(), F_OK) != 0)
 	{
@@ -223,31 +239,10 @@ Response* RequestHandler::build_get_response()
 	return new Response(OK, file, path, true);
 }
 
-Response* RequestHandler::build_post_response()
-{
-	std::string		ext;
-	std::string		path;
-	byteVector		emptyBody;
-
-	this->find_corresponding_location();
-	path = this->get_file_path();
-	if (!check_if_method_allowed(this->_location, "POST"))
-		return new Response(METHOD_NOT_ALLOWED);
-	if (this->get_cgi_ext(ext))
-	{
-		if (this->get_cgi_loc(ext))
-			return new Response(NOT_IMPLEMENTED, byteVector(), path, true);
-		return new Response(OK, emptyBody, path, true);
-	}
-	return new Response(CREATED, emptyBody, path, true);
-}
-
 Response* RequestHandler::build_delete_response()
 {
     std::string path;
 
-    this->find_corresponding_location();
-    path = this->get_file_path();
     if (!check_if_method_allowed(this->_location, "DELETE"))
         return new Response(METHOD_NOT_ALLOWED);
     if (access(path.c_str(), F_OK) != 0)

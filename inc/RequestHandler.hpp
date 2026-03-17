@@ -26,8 +26,8 @@ class RequestHandler
 		// RequestHandler &operator=(const RequestHandler &other);
 	
 		Response		*handle_request();
-		Response		*build_get_response();
-		Response		*build_post_response();
+		Response		*build_get_response(std::string &path);
+		// Response		*build_post_response();
 		Response		*build_delete_response();
 
 		bool			setupUpload(std::string &content_type);
@@ -37,6 +37,7 @@ class RequestHandler
 		std::string		get_cgi_path();
 		void			find_corresponding_location();
 		int				get_cgi_loc(std::string &ext);
+		bool			is_redirection();
 		LocationConfig&	getLocation();
 		const ServerConfig	&getServer();
 };

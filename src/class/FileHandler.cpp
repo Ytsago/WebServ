@@ -22,7 +22,6 @@ FileHandler::FileHandler(HttpRequest &request, const ServerConfig *server, std::
 			this->_boundary = "--" + h_content.substr(pos + 9);
 	}
 	this->_uploadPath = "./" + _server->get_root() + "uploads/";
-	Logger::record(DEBUG) << _uploadPath;
 }
 
 FileHandler&	FileHandler::operator=(const FileHandler& other) {
@@ -77,7 +76,6 @@ static std::string extract_filename(std::vector<char>::iterator begin, std::vect
 
 void FileHandler::multiparse(const std::vector<char> &chunk) 
 {
-	Logger::record(DEBUG) << "Multipart... " << chunk.size();
 	this->_buffer.insert(this->_buffer.end(), chunk.begin(), chunk.end());
 	_bodySize += _buffer.size();
 	if (_bodySize >= _server->get_client_max_body_size())

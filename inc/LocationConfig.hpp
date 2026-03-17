@@ -18,6 +18,8 @@ class LocationConfig
 		std::string					_cgiExt;
 		std::string					_cgiPath;
 		bool						_isCgi;
+		bool						_isRedirection;
+		std::string					_redirection;
 
 	public:
 
@@ -34,6 +36,8 @@ class LocationConfig
 		std::string					get_cgi_ext() const;
 		std::string					get_cgi_path() const;
 		bool						is_cgi() const;
+		bool						is_redirection() const;
+		std::string					get_redirection() const;
 
 		void	set_path(std::string value);
 		void	set_root(std::string value);
@@ -43,6 +47,8 @@ class LocationConfig
 		void	set_cgi_ext(std::string value);
 		void	set_cgi_path(std::string value);
 		void	set_is_cgi(bool value);
+		void	set_is_redirection(bool value);
+		void	set_redirection(std::string value);
 };
 
 std::ostream &operator<<(std::ostream &out, const LocationConfig &location);
