@@ -189,12 +189,10 @@ int ClientHandler::build_response(int epollFd)
 	Logger::record(INFO) << "Building response...";
     RequestHandler handler(*_serverConf, *_request, epollFd);
     if (_response) delete _response;
-	// std::cout << "redir?: " << handler.is_redirection();
    	this->_response = handler.handle_request();
 	Logger::record(DEBUG) << this->_response->getStatusCode();
     this->_state = SENDING_RESPONSE;
     return CLT_MSG_END;
-    //switch to epollout
 }
 
 void ClientHandler::handleWrite(WebServ& context) 
@@ -287,7 +285,7 @@ bool	ClientHandler::sendTimeout(WebServ& context) {
 }
 
 int	ClientHandler::handleEvent(uint32_t event, WebServ& context) {
-	if (event == EPOLLIN) {
+	if (event & EPOLLIN) {
 		switch (receiveMsg(context)) {
 			case CLT_MSG_END:
 				if (_request) delete _request;
@@ -311,7 +309,7 @@ int	ClientHandler::handleEvent(uint32_t event, WebServ& context) {
 				return 0;
 		}
 	}
-	else if (event & EPOLLOUT) handleWrite(context);
+	if (event & EPOLLOUT) handleWrite(context);
 	if (_state == END) {
 		if (_keepAlive == false)
 			return RM_CLT;

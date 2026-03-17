@@ -77,7 +77,7 @@ static std::string	get_http_date()
 	strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S GMT", gm_time);
 	return (std::string(buffer));
 }
-#define ERROR_PAGE "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n<title>Document</title>\n</head>\n<body>\n<h1>"
+#define ERROR_PAGE "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n<title>Error</title>\n</head>\n<body>\n<h1>"
 #define ERROR_PAGE_END "</h1>\n</body>\n</html>\n"
 //TODO When another status code than 200 is send mime type may be irrevalent
 void	Response::build_header(size_t body_size, std::string path, bool connection)
@@ -87,21 +87,23 @@ void	Response::build_header(size_t body_size, std::string path, bool connection)
 	std::string	body;
 
 	str_size = int_to_string(body_size);
-	if (_status_code >= 400 || _status_code == 301)
+	if (_status_code >= 400)
 		body = ERROR_PAGE + int_to_string(_status_code) + " "+ g_status_map[_status_code] + ERROR_PAGE_END;
+	if (_status_code == 301)
+		buffer += "Location: " + path + "\r\n";
 	if (_status_code != 204 && _status_code != 304) {
-		if (_status_code >= 400 || _status_code == 301)
+		if (_status_code >= 400)
 			str_size = int_to_string(body.size());
 		buffer += "Content-Length: " + str_size + "\r\n";
 	}
 	if (body_size > 0)
 		buffer += "Content-Type: " + get_mime_type(path) + "\r\n";
 
-	"Date: " + get_http_date() + "\r\n";
+	buffer += "Date: " + get_http_date() + "\r\n";
 	bool	shouldClose = !connection || _status_code > 500;
-		buffer += "Connection: " + std::string(shouldClose ? "close" : "keep_alive") + "\r\n";
+		buffer += "Connection: " + std::string(shouldClose ? "close" : "keep-alive") + "\r\n";
 	buffer += "\r\n";
-	if (_status_code >= 400 || _status_code == 301)
+	if (_status_code >= 400)
 		buffer += body;
 	this->_full_response.insert(this->_full_response.end(), buffer.begin(), buffer.end());
 }
