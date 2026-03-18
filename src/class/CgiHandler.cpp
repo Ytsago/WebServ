@@ -25,7 +25,7 @@ static void	dup_fd(int fd1, int fd2)
 {
 	if (dup2(fd1, fd2) == -1)
 	{
-		//exception
+	//exception
 	}
 }
 

@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <map>
 #include <sstream>
+#include <sys/stat.h>
 
 RequestHandler::RequestHandler(const ServerConfig &server, HttpRequest &request, int epollFd) :
 	_server(server),
@@ -40,16 +41,6 @@ RequestHandler::~RequestHandler() {}
 LocationConfig	&RequestHandler::getLocation() {return (this->_location);}
 const ServerConfig	&RequestHandler::getServer() {return (this->_server);}
 
-static bool check_path_correspondance(std::vector<std::string> &uri_blocks, std::vector<std::string> &loc_blocks, size_t block_nb)
-{
-	for (size_t i = 0; i < block_nb; i++)
-	{
-		if (uri_blocks[i].compare(loc_blocks[i]) != 0)
-			return false;
-	}
-	return true;
-}
-
 void	RequestHandler::find_corresponding_location()
 {
 	std::vector<LocationConfig>::iterator	it;
@@ -58,11 +49,12 @@ void	RequestHandler::find_corresponding_location()
 	std::string					uri = this->_request.getUri();
 	std::string					buffer;
 	std::vector<std::string>	uri_blocks;
-	size_t						block_nb;
+	// size_t						block_nb;
 	char						del = '/';
 	size_t						loc_size = 0;
 	size_t						longest_loc_size = 0;
 
+	
 	std::stringstream 	ssu(uri);
 	while (getline(ssu, buffer, del))
 	{
@@ -71,17 +63,7 @@ void	RequestHandler::find_corresponding_location()
 	}
 	for (it = server_locations.begin(); it != server_locations.end(); it++)
 	{
-		std::stringstream 	ssl(it->get_path());
-		std::vector<std::string>	loc_blocks;
-		while (getline(ssl, buffer, del))
-		{
-			if (!buffer.empty())
-				loc_blocks.push_back(buffer);
-		}
-		if (loc_blocks.size() > uri_blocks.size())
-			continue;
-		block_nb = loc_blocks.size();
-		if (check_path_correspondance(uri_blocks, loc_blocks, block_nb))
+		if (uri.find(it->get_path()) == 0)
 			potential_locations.push_back(*it);
 	}
 	this->_location = this->_server.get_default_location();
@@ -149,7 +131,9 @@ std::string	RequestHandler::get_file_path()
     if (!root.empty() && root[root.size() - 1] != '/')
 		root += '/';
 	std::string loc_path = this->_location.get_path();
+	std::cout << this->_location.get_path() << "\n" << uri << "\n";
 	std::string part_after_loc = uri.substr(loc_path.length());
+	std::cout << "yes2\n";
 	std::cout << "loc_path: " << loc_path << '\n' << "part_after_loc: " << part_after_loc << '\n';
     if (part_after_loc.empty() || part_after_loc == "/") 
     {
@@ -230,11 +214,39 @@ Response* RequestHandler::handle_request()
 	return new Response(METHOD_NOT_ALLOWED);
 }
 
+byteVector RequestHandler::get_autodindex(const std::string& path)
+{
+	byteVector		body;
+	struct stat		fs;
+
+	if (stat(this->_request.getUri().c_str(), &fs) == 0 && !S_ISDIR(fs.st_mode))
+	{
+		std::cout << "1111111\n";
+		return byteVector();
+	}
+	if (this->_location.get_index().empty() && this->_server.get_index().empty() && this->_location.get_autoindex())
+	{
+		std::cout << "1.5\n";
+		Logger::record(DEBUG) << "Path: " << path << "URI :" << _request.getUri();
+		std::string response = generateAutoIndex(path, this->_request.getUri());
+		std::cout << "resp: " << response;
+		body.insert(body.end(), response.begin(), response.end());
+		std::cout << "body: " << body.data();
+		return body;
+	}
+	std::cout << "333333\n";
+	return byteVector();
+}
+
 Response* RequestHandler::build_get_response(std::string &path)
 {
 	byteVector		file;
+	byteVector		body;
 
 	file = GetFile(path);
+	body = this->get_autodindex(path);
+	if (access(path.c_str(), F_OK) != 0 || body.size() > 0)
+		return new Response(OK, body, path, true);
 	if (file.empty() || access(path.c_str(), F_OK) != 0)
 	{
 		Logger::record(INFO) << "File not found: " << path;

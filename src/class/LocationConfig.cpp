@@ -37,7 +37,7 @@ LocationConfig	&LocationConfig::operator=(const LocationConfig &rhs)
 		this->_cgiPath = rhs._cgiPath;
 		this->_isCgi = rhs._isCgi;
 		this->_isRedirection = rhs._isRedirection;
-		this->_redirection = rhs._cgiPath;
+		this->_redirection = rhs._redirection;
 	}
 	return (*this);
 }

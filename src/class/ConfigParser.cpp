@@ -1,4 +1,5 @@
 #include "ConfigParser.hpp"
+#include "Logger.hpp"
 #include <fstream>
 
 ConfigParser::ConfigParser() : _lineCount(0) {}
@@ -164,6 +165,7 @@ LocationConfig	ConfigParser::parse_location(std::ifstream &file, std::string hea
 		server.set_default_location(location);
 		server.set_is_default_set(true);
 	}
+	location.set_autoindex(false);
 	while (std::getline(file, line)) 
 	{
 		this->_lineCount++;
@@ -233,7 +235,7 @@ LocationConfig	ConfigParser::parse_location(std::ifstream &file, std::string hea
 				throw ConfigException("Invalid redirection value", this->_lineCount);
 			if (!(ss_line >> s_value))
 				throw ConfigException("Invalid redirection value", this->_lineCount);
-			location.set_redirection("s_value");
+			location.set_redirection(s_value);
 			location.set_is_redirection(true);
 			has_path = true;
 		}

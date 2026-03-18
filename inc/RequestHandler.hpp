@@ -38,6 +38,7 @@ class RequestHandler
 		void			find_corresponding_location();
 		int				get_cgi_loc(std::string &ext);
 		bool			is_redirection();
+		byteVector		get_autodindex(const std::string& path);
 		LocationConfig&	getLocation();
 		const ServerConfig	&getServer();
 };
