@@ -3,3 +3,6 @@ compile_commands.json
 .cache
 WebServ
 *.txt
+./test/
+./test
+./test/*

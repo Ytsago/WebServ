@@ -25,16 +25,7 @@ CgiContainer::CgiContainer(int epollFd, ClientHandler& parent, int fd, int event
 	_lastAlive = time(NULL);
 }
 
-CgiContainer::~CgiContainer() 
-{
-	// if (_fd != -1) 
-	// {
-	//        epoll_ctl(_epollFd, EPOLL_CTL_DEL, _fd, NULL);
-	//        close(_fd);
-	//        _fd = -1;
-	//    }
-	// _parent.unregisterCgi(this);
-}
+CgiContainer::~CgiContainer() {}
 
 int	CgiContainer::handleWrite() {
 	const byteVector&	body =_parent.getRequest().getBody();
@@ -103,9 +94,6 @@ int	CgiContainer::handleEvent(uint32_t event, WebServ& context) {
 			case CGI_WRITE_OK: break;
 			case CGI_WRITE_END:
 				Logger::record(INFO) << "Finished writing to CGI..";
-				// epoll_ctl(context.getEpoll(), EPOLL_CTL_DEL, _fd, NULL);
-				// close(_fd);
-				// _fd = -1;
 				return CGI_END;
 			default: break;
 		}

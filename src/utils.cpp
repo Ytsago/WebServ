@@ -1,5 +1,5 @@
-#include "AMessage.hpp"
 #include "ANetContainer.hpp"
+#include "WebServ.hpp"
 #include "Logger.hpp"
 #include <dirent.h>
 #include <fstream>
@@ -8,16 +8,10 @@
 #include <sys/stat.h>
 
 byteVector	GetFile(std::string path) {
-	//Open file at the end ("ate")
 	std::ifstream	file(path.c_str(), std::ios::binary | std::ios::ate);
-
-	//Get file size
 	std::streamsize size = file.tellg();
 
-
-	//Return to the start
 	file.seekg(std::ios::beg);
-
 	if (size == -1)
 		return byteVector();
 	byteVector	buffer(size);
@@ -37,7 +31,7 @@ std::string	int_to_string(int n)
 	return (str_n);
 }
 
-const std::string	SPECIFIC_KEYS[] = {"transfer-encoding", "connection"}; //ADD here the key that will be lowered
+const std::string	SPECIFIC_KEYS[] = {"transfer-encoding", "connection"};
 
 void	strLower(std::string& str) {
 	std::string::iterator	it = str.begin();
@@ -121,7 +115,6 @@ std::string	generateAutoIndex(const std::string& root, const std::string& uri) {
 		switch (entry->d_type) {
 			case DT_DIR: isDir = true; break;
 			case DT_REG: isDir = false; break;
-
 			case DT_LNK:
 			case DT_UNKNOWN:
 				if (!checkIsDir(root + "/" + entry->d_name, isDir)) {

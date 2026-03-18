@@ -77,9 +77,7 @@ static std::string	get_http_date()
 	strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S GMT", gm_time);
 	return (std::string(buffer));
 }
-#define ERROR_PAGE "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n<title>Error</title>\n</head>\n<body>\n<h1>"
-#define ERROR_PAGE_END "</h1>\n</body>\n</html>\n"
-//TODO When another status code than 200 is send mime type may be irrevalent
+
 void	Response::build_header(size_t body_size, std::string path, bool connection)
 {
 	std::string			str_size;

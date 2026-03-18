@@ -54,8 +54,6 @@ const ServerConfig*	ClientHandler::findHostConf() {
 		std::string	host = it->get_host();
 		strLower(host);
 		std::string	hostWithPort = host + ":" + int_to_string(it->get_listen_port());
-		// Logger::record(DEBUG) << host << ", " << hostWithPort << ", " << _request->getHeaders()["host"] << "\n"
-		// 	<< hostWithPort.size() << ", " << _request->getHeaders()["host"].size();
 		if (host == _request->getHeaders()["host"] || hostWithPort == _request->getHeaders()["host"])
 			return &(*it);
 	}
@@ -99,7 +97,6 @@ int	ClientHandler::receiveMsg(WebServ& context) {
         	else
         		_keepAlive = false;
         	_serverConf = findHostConf();
-        	// _request->setHost(_serverConf);
         	Logger::record(INFO) << "Processing request...";
             RequestHandler handler(*_serverConf, *_request, context.getEpoll());
             std::string contentType;
@@ -178,7 +175,6 @@ int	ClientHandler::receiveMsg(WebServ& context) {
 		ev.events = 0;
 		ev.data.ptr = this;
 		epoll_ctl(context.getEpoll(), EPOLL_CTL_MOD, _fd, &ev);
-    	// this->_state = SENDING_RESPONSE;
 		return CLT_WTG_CGI;
 	}
 	return CLT_MSG_RCV;

@@ -4,7 +4,6 @@
 # include "ANetContainer.hpp"
 # include "HttpParser.hpp"
 # include "Response.hpp"
-# include "Request.hpp"
 # include "FileHandler.hpp"
 
 # define BUFFSIZE 4096

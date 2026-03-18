@@ -9,6 +9,9 @@
 #define MAXEVENT 1024
 #define TIMEOUT 10
 
+typedef std::map<std::string, std::string> headerMap;
+typedef std::vector<char> byteVector;
+
 class AEventHandler;
 
 class WebServ {

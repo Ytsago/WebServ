@@ -5,8 +5,6 @@
 #include "HeaderMap.hpp"
 #include "StatusCode.hpp"
 
-# define MAX_BODY_SIZE 100000000 //Has to depend on the host server
-
 class HttpParser {
 	public:
 		HttpParser();
@@ -46,7 +44,6 @@ class HttpParser {
 		size_t				m_contentLength;
 		size_t				m_bodySize;
 
-		// std::vector<std::pair<std::string, std::string> > m_header;
 		HeaderMap			m_headers;
 		std::vector<char>	m_body;
 		std::vector<char>	m_readBuf;
@@ -58,13 +55,6 @@ class HttpParser {
 		void	processHeader();
 		void	parseMediaType(std::string& media);
 
-};
-
-class multiPartParser {
-	public:
-		enum State{START, BOUND, HEADER, CONTENT, DONE};
-	private:
-		// State	m_state;
 };
 
 #endif

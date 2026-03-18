@@ -24,9 +24,7 @@ CgiHandler::~CgiHandler() {
 static void	dup_fd(int fd1, int fd2)
 {
 	if (dup2(fd1, fd2) == -1)
-	{
-	//exception
-	}
+		throw std::runtime_error("dup2 error");
 }
 
 static void	close_pipes(int *pipefd)

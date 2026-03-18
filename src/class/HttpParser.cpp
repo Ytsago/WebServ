@@ -124,7 +124,7 @@ void	HttpParser::processHeader() {
 		char*	endptr;
 		long	val;
 		val = std::strtol(header.c_str(), &endptr, 10);
-		if (*endptr != '\0' || val < 0 || val > MAX_BODY_SIZE) {
+		if (*endptr != '\0' || val < 0) {
 			throw HttpRequestParsingException(BAD_REQUEST);
 		}
 		m_contentLength = static_cast<size_t>(val);
@@ -147,7 +147,7 @@ void	HttpParser::processHeader() {
 		switch (m_type) {
 			case TEXT:
 				if (m_subtype.empty()) {
-					// throw HttpRequestParsingException(BAD_REQUEST);
+					throw HttpRequestParsingException(BAD_REQUEST);
 					break;
 				}
 				break;

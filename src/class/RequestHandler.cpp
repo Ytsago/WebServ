@@ -24,18 +24,6 @@ RequestHandler::RequestHandler(const RequestHandler &other) :
 	_location(other._location),
 	_epollFd(other._epollFd) {}
 
-// RequestHandler	&RequestHandler::operator=(const RequestHandler &other) 
-// {
-// 	if (this != &other)
-// 	{
-// 		this->_server = other._server;
-// 		this->_request = other._request;
-// 		this->_location = other._location;
-// 		this->_epollFd = other._epollFd;
-// 	}
-// 	return (*this);
-// }
-
 RequestHandler::~RequestHandler() {}
 
 LocationConfig	&RequestHandler::getLocation() {return (this->_location);}

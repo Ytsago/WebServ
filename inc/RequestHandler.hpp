@@ -23,11 +23,9 @@ class RequestHandler
 		RequestHandler(const ServerConfig &server, HttpRequest &request, int epollFd);
 		~RequestHandler();
 		RequestHandler(const RequestHandler &other);
-		// RequestHandler &operator=(const RequestHandler &other);
 	
 		Response		*handle_request();
 		Response		*build_get_response(std::string &path);
-		// Response		*build_post_response();
 		Response		*build_delete_response();
 
 		bool			setupUpload(std::string &content_type);
