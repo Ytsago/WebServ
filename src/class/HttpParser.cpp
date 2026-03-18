@@ -72,7 +72,6 @@ void	HttpParser::parseMediaType(std::string& rawMedia) {
 	size_t	slashPos = rawMedia.find('/');
 
 	if (slashPos == std::string::npos || slashPos == rawMedia.size() -1 || slashPos == 0) {
-		Logger::record(ERROR) << "1";
 		throw HttpRequestParsingException(BAD_REQUEST);
 	}
 
@@ -82,7 +81,6 @@ void	HttpParser::parseMediaType(std::string& rawMedia) {
 	trim(m_subtype);
 
 	if (m_subtype.empty()) {
-		Logger::record(ERROR) << "2";
 		throw HttpRequestParsingException(BAD_REQUEST);
 	}
 	if (media == "text") m_type = TEXT;
@@ -188,13 +186,11 @@ bool	HttpParser::parseHeader() {
 
 	std::vector<char>::iterator	itSeparator = std::find(itStart, itEndLine, ':');
 	if (itSeparator == itEndLine) {
-		Logger::record(ERROR) << "5";
 		throw HttpRequestParsingException(BAD_REQUEST);
 	}
 
 	std::string	key(itStart, itSeparator);
 	if (key.empty()) {
-		Logger::record(ERROR) << "6";
 		throw HttpRequestParsingException(BAD_REQUEST);
 	}
 

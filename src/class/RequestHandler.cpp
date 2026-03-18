@@ -119,10 +119,7 @@ std::string	RequestHandler::get_file_path()
     if (!root.empty() && root[root.size() - 1] != '/')
 		root += '/';
 	std::string loc_path = this->_location.get_path();
-	std::cout << this->_location.get_path() << "\n" << uri << "\n";
 	std::string part_after_loc = uri.substr(loc_path.length());
-	std::cout << "yes2\n";
-	std::cout << "loc_path: " << loc_path << '\n' << "part_after_loc: " << part_after_loc << '\n';
     if (part_after_loc.empty() || part_after_loc == "/") 
     {
         index = this->_location.get_index().empty() ? this->_server.get_index() : this->_location.get_index();
@@ -175,11 +172,8 @@ Response* RequestHandler::handle_request()
 	std::string		ext;
 
 	this->find_corresponding_location();
-	std::cout << "ALLO BONJOUR\n";
-	std::cout << _location;
 	if (this->_location.is_redirection() == true)
 	{
-		std::cout << _location;
 		path = this->_location.get_redirection();
 		body.insert(body.end(), path.begin(), path.end());
 		return new Response(MOVED_PERMANENTLY, body, path, false);
@@ -208,21 +202,13 @@ byteVector RequestHandler::get_autodindex(const std::string& path)
 	struct stat		fs;
 
 	if (stat(this->_request.getUri().c_str(), &fs) == 0 && !S_ISDIR(fs.st_mode))
-	{
-		std::cout << "1111111\n";
 		return byteVector();
-	}
 	if (this->_location.get_index().empty() && this->_server.get_index().empty() && this->_location.get_autoindex())
 	{
-		std::cout << "1.5\n";
-		Logger::record(DEBUG) << "Path: " << path << "URI :" << _request.getUri();
 		std::string response = generateAutoIndex(path, this->_request.getUri());
-		std::cout << "resp: " << response;
 		body.insert(body.end(), response.begin(), response.end());
-		std::cout << "body: " << body.data();
 		return body;
 	}
-	std::cout << "333333\n";
 	return byteVector();
 }
 

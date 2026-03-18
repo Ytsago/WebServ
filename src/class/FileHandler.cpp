@@ -84,7 +84,6 @@ void FileHandler::multiparse(const std::vector<char> &chunk)
 	{
 		if (this->_state == SEARCH_BOUNDARY) 
 		{
-			Logger::record(INFO) << "Multipart: searching boundary...";
 			std::vector<char>::iterator it = std::search(this->_buffer.begin(), this->_buffer.end(), this->_boundary.begin(), this->_boundary.end());
 			if (it == this->_buffer.end()) 
 				break;
@@ -93,7 +92,6 @@ void FileHandler::multiparse(const std::vector<char> &chunk)
 		}
 		if (this->_state == PARSE_HEADERS) 
 		{
-			Logger::record(INFO) << "Multipart: Parsing headers...";
 			const char *del = "\r\n\r\n";
 			std::vector<char>::iterator it = std::search(this->_buffer.begin(), this->_buffer.end(), del, del + 4);
 			if (it == this->_buffer.end()) 
@@ -101,13 +99,11 @@ void FileHandler::multiparse(const std::vector<char> &chunk)
 			this->_filename = extract_filename(this->_buffer.begin(), it);
 			this->_filename = this->_uploadPath + this->_filename;
 			this->_fileFd = open(this->_filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
-			Logger::record(INFO) << "File: " << _filename.c_str() << " fd: " << _fileFd;
 			this->_buffer.erase(this->_buffer.begin(), it + 4);
 			this->_state = WRITING_DATA;
 		}
 		if (this->_state == WRITING_DATA)
 		{
-			Logger::record(INFO) << "Multipart: Writing data...";
 			const char *end_boundary = "--";
 			std::vector<char>::iterator it = std::search(this->_buffer.begin(),this-> _buffer.end(), this->_boundary.begin(), this->_boundary.end());
 			if (it != _buffer.end())

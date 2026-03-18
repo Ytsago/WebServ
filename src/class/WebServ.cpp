@@ -22,12 +22,8 @@ WebServ::WebServ() {
 		Logger::record(ERROR) << "Failed to create the epoll loop";
 		throw std::runtime_error("Error, epoll failed to load...");
 	}
-
-	Logger::record(SETUP) << "Creating the singal handler...";
 	signal(SIGINT, sigHandler);
 	signal(SIGPIPE, sigHandler);
-
-	Logger::record(SUCCESS) << "You can safely quit the program with CTRL + C";
 }
 
 void	WebServ::initHost() {

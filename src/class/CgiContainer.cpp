@@ -30,7 +30,6 @@ CgiContainer::~CgiContainer() {}
 int	CgiContainer::handleWrite() {
 	const byteVector&	body =_parent.getRequest().getBody();
 	if (body.size() == 0) {
-		Logger::record(DEBUG) << "Body: " << body.size();
 		return CGI_WRITE_END;
 	}
 	ssize_t	bytes = write(_fd, body.data() + _index, body.size() - _index);
@@ -78,7 +77,6 @@ Response	*CgiContainer::handle_pid()
 		else if (WIFSIGNALED(status))
 			response = new Response(INTERNAL_SERVER_ERROR);
 	}
-	Logger::record(INFO) << "CGI status: " << status_code;
 	return response;
 }
 
@@ -106,10 +104,8 @@ int	CgiContainer::handleEvent(uint32_t event, WebServ& context) {
 			case CGI_READ_END: force_end = true;
 		}
 	}
-	if (!force_end && (event & (EPOLLHUP | EPOLLERR))) {
-        Logger::record(INFO) << "Forcing CGI response building...";
+	if (!force_end && (event & (EPOLLHUP | EPOLLERR)))
         force_end = true;
-    }
 	if (force_end) {
 		Logger::record(INFO) << "Building CGI response";
 		Response *response = this->handle_pid();

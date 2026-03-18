@@ -8,7 +8,7 @@ AEventHandler::AEventHandler(): _fd(-1) {}
 int	AEventHandler::addToEpoll(int epollFd, int event) {
 	epoll_event	ev;
 
-	Logger::record(SETUP) << "Adding " << _fd << "to epoll";
+	Logger::record(SETUP) << "Adding " << _fd << " to epoll";
 	ev.events = event, ev.data.ptr = this;
 	if (epoll_ctl(epollFd, EPOLL_CTL_ADD, _fd, &ev) < 0) {
 		Logger::record(ERROR) << "Failed to add event to epoll: " << _fd;

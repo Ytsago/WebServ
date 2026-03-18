@@ -33,7 +33,7 @@ ClientHandler::ClientHandler(WebServ& context, ServerHandler& host) : _request(N
 }
 
 int	ClientHandler::activateEpoll(int epollFd, int event) {
-	Logger::record(SETUP) << "Client: " << _fd << "resetting epoll...";
+	Logger::record(SETUP) << "Client: " << _fd << " resetting epoll...";
 	_state = SENDING_RESPONSE;
 	epoll_event ev;
 	ev.events = event;
@@ -101,15 +101,11 @@ int	ClientHandler::receiveMsg(WebServ& context) {
             RequestHandler handler(*_serverConf, *_request, context.getEpoll());
             std::string contentType;
 			std::string	ext;
-        	Logger::record(DEBUG) << "URI: " << _request->getUri();
 			if (handler.is_redirection())
-			{
-        		Logger::record(INFO) << "Request is a redirection";
-				return build_response(context.getEpoll()); 
-			}
+				return build_response(context.getEpoll());
             if (handler.setupUpload(contentType)) 
             {
-            	Logger::record(INFO) << "Downloading file...";
+            	Logger::record(INFO) << "Downloading files...";
                 this->_fileHandler = FileHandler(*_request, _serverConf, contentType);
                 this->_state = WRITING_BODY;
                 if (!this->_request->getBody().empty()) {
@@ -186,7 +182,6 @@ int ClientHandler::build_response(int epollFd)
     RequestHandler handler(*_serverConf, *_request, epollFd);
     if (_response) delete _response;
    	this->_response = handler.handle_request();
-	Logger::record(DEBUG) << this->_response->getStatusCode();
     this->_state = SENDING_RESPONSE;
     return CLT_MSG_END;
 }
