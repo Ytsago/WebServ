@@ -38,7 +38,7 @@ make re
 ## Architectural design
 
 
-![[example.png]]
+![Schema](./example.png)
 
 ## Resources
 
