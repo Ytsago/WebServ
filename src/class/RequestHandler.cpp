@@ -150,6 +150,7 @@ std::string	RequestHandler::get_file_path()
 		root += '/';
 	std::string loc_path = this->_location.get_path();
 	std::string part_after_loc = uri.substr(loc_path.length());
+	std::cout << "loc_path: " << loc_path << '\n' << "part_after_loc: " << part_after_loc << '\n';
     if (part_after_loc.empty() || part_after_loc == "/") 
     {
         index = this->_location.get_index().empty() ? this->_server.get_index() : this->_location.get_index();
@@ -202,8 +203,11 @@ Response* RequestHandler::handle_request()
 	std::string		ext;
 
 	this->find_corresponding_location();
+	std::cout << "ALLO BONJOUR\n";
+	std::cout << _location;
 	if (this->_location.is_redirection() == true)
 	{
+		std::cout << _location;
 		path = this->_location.get_redirection();
 		body.insert(body.end(), path.begin(), path.end());
 		return new Response(MOVED_PERMANENTLY, body, path, false);
