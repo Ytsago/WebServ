@@ -1,15 +1,11 @@
-#include <vector>
-#include <fstream>
-#include <string>
-#include <fcntl.h>
-#include <sstream>
-#include <sys/socket.h>
-#include <sys/epoll.h>
-#include <netinet/in.h>
-
 #include "AMessage.hpp"
-#include "Logger.hpp"
 #include "ANetContainer.hpp"
+#include "Logger.hpp"
+#include <dirent.h>
+#include <fstream>
+#include <sstream>
+#include <sys/epoll.h>
+#include <sys/stat.h>
 
 byteVector	GetFile(std::string path) {
 	//Open file at the end ("ate")
@@ -95,4 +91,52 @@ std::string	extractAttribute(const std::string& header, const std::string& attNa
 	if (attribute.size() >= 2 && attribute[0] == '"' && attribute[attribute.size() -1] == '"')
 		return attribute.substr(1, attribute.size() -2);
 	return attribute;
+}
+
+bool	checkIsDir(const std::string& path, bool& isDir) {
+	struct stat	info;
+	std::string	fullPath = path;
+	if (stat(fullPath.c_str(), &info) < 0) {
+		return true;
+	}
+	if (S_ISDIR(info.st_mode)) isDir = true;
+	return false;
+}
+
+std::string	generateAutoIndex(const std::string& root, const std::string& uri) {
+	DIR* dir = opendir(root.c_str());
+	if (!dir)
+		return "";
+
+	std::ostringstream	html;
+	html << "<html>\n<head><title>Index of " << uri << "</title></head>\n";
+	html << "<body>\n<h1>Index of " << uri << "</h1><hr><pre>\n";
+	struct dirent*	entry;
+	while ((entry = readdir(dir)) != NULL) {
+		std::string	name = entry->d_name;
+		bool		isDir = false;
+		if (name == "." || name == "..")
+			continue;
+
+		switch (entry->d_type) {
+			case DT_DIR: isDir = true; break;
+			case DT_REG: isDir = false; break;
+
+			case DT_LNK:
+			case DT_UNKNOWN:
+				if (!checkIsDir(root + "/" + entry->d_name, isDir)) {
+					Logger::record(WARNING) << "Can't determinate file: " << name;
+					continue;
+				}
+				break;
+			default:
+				Logger::record(WARNING) << "Unknow file entry: " << name;
+				continue;
+		}
+		std::string	link = (*uri.rbegin() == '/') ? uri + name : uri + "/" + name;
+		html << "<a href=\"" <<	link + (isDir ? "/" : "") << "\">" << name + (isDir ? "/" : "") << "</a>\n";
+	}
+	html << "</pre><hr></body>\n</html>";
+	closedir(dir);
+	return html.str();
 }

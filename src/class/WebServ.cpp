@@ -105,18 +105,12 @@ void	WebServ::run(const char *arg) {
 			AEventHandler* incoming = reinterpret_cast<AEventHandler*>(events[i].data.ptr);
 			switch (incoming->handleEvent(events[i].events, *this)) {
 				case CLT_MSG_ERR:
-					removeHandler(incoming);
-					break;
 				case RM_CLT:
-					removeHandler(incoming);
-					break;
 				case CGI_END:
-					removeHandler(incoming);
-					break;
 				case CGI_KO:
-					//TODO internal server error
 					removeHandler(incoming);
 					break;
+
 				default:
 					break ;
 			}
