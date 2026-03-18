@@ -12,7 +12,7 @@ byteVector	GetFile(std::string path) {
 	std::streamsize size = file.tellg();
 
 	file.seekg(std::ios::beg);
-	if (size == -1)
+	if (size == -1 || size > 9999999999)
 		return byteVector();
 	byteVector	buffer(size);
 	if (file.read(buffer.data(), size)) {
