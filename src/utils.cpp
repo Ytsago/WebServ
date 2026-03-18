@@ -1,6 +1,7 @@
 #include "ANetContainer.hpp"
 #include "WebServ.hpp"
 #include "Logger.hpp"
+#include "utils.hpp"
 #include <dirent.h>
 #include <fstream>
 #include <sstream>
@@ -12,7 +13,7 @@ byteVector	GetFile(std::string path) {
 	std::streamsize size = file.tellg();
 
 	file.seekg(std::ios::beg);
-	if (size == -1)
+	if (size == -1 || size > MAX_FILE_SIZE)
 		return byteVector();
 	byteVector	buffer(size);
 	if (file.read(buffer.data(), size)) {

@@ -6,6 +6,8 @@
 
 #include "ANetContainer.hpp"
 
+#define MAX_FILE_SIZE 999999999
+
 
 std::vector<char>	GetFile(std::string path);
 std::string			int_to_string(int n);
