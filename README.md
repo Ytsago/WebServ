@@ -38,18 +38,18 @@ make re
 ## Architectural design
 
 
-![[Pasted image 20260318151658.png]]
+![[example.png]]
 
 ## Resources
 
 **Epoll**
 see man
 
-**Http Protocol**
-https://developer.mozilla.org/fr/docs/Web/HTTP
-https://www.rfc-editor.org/rfc/rfc9110.html (and 9111 and 9112)
+**Http Protocol**  
+https://developer.mozilla.org/fr/docs/Web/HTTP  
+https://www.rfc-editor.org/rfc/rfc9110.html (and 9111 and 9112)  
 
-**Nginx**
-https://blog.nginx.org/blog/inside-nginx-how-we-designed-for-performance-scale
-https://aosabook.org/en/v2/nginx.html
-https://www.alimnaqvi.com/blog/webserv
+**Nginx**  
+https://blog.nginx.org/blog/inside-nginx-how-we-designed-for-performance-scale  
+https://aosabook.org/en/v2/nginx.html  
+https://www.alimnaqvi.com/blog/webserv  
