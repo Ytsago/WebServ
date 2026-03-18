@@ -164,7 +164,6 @@ LocationConfig	ConfigParser::parse_location(std::ifstream &file, std::string hea
 		server.set_default_location(location);
 		server.set_is_default_set(true);
 	}
-	location.set_autoindex(false);
 	while (std::getline(file, line)) 
 	{
 		this->_lineCount++;

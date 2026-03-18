@@ -109,7 +109,6 @@ t_pipe CgiHandler::execute_cgi(const ServerConfig &server, HttpRequest &request,
 	char	**envp;
 	int		pipefd[4];
 
-	Logger::record(DEBUG) << "Cgi path: " << location.get_cgi_path() << "\npath: " << path;
 	env = build_env(server, request, location, path);
 	envp = map_to_envp(env);
 	if (access(path.c_str(), X_OK) == -1)

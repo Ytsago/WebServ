@@ -59,7 +59,7 @@ void	RequestHandler::find_corresponding_location()
 			longest_loc_size = loc_size;
 			this->_location = *it;
 		}
-	} 
+	}
 }
 
 int	RequestHandler::get_cgi_loc(std::string &ext)
@@ -175,6 +175,8 @@ Response* RequestHandler::handle_request()
 		return new Response(MOVED_PERMANENTLY, body, path, false);
 	}
 	path = this->get_file_path();
+	if (method == "DELETE") 
+		return this->build_delete_response();
 	if (!check_if_method_allowed(this->_location, method))
 		return new Response(METHOD_NOT_ALLOWED);
 	if (this->get_cgi_ext(ext))
@@ -187,8 +189,6 @@ Response* RequestHandler::handle_request()
 		return this->build_get_response(path);
 	else if (method == "POST") 
 		return new Response(CREATED, byteVector(), path, true);
-	else if (method == "DELETE") 
-		return this->build_delete_response();
 	return new Response(METHOD_NOT_ALLOWED);
 }
 
@@ -215,7 +215,7 @@ Response* RequestHandler::build_get_response(std::string &path)
 
 	file = GetFile(path);
 	body = this->get_autodindex(path);
-	if (access(path.c_str(), F_OK) != 0 || body.size() > 0)
+	if (body.size() > 0)
 		return new Response(OK, body, path, true);
 	if (file.empty() || access(path.c_str(), F_OK) != 0)
 	{
@@ -227,10 +227,10 @@ Response* RequestHandler::build_get_response(std::string &path)
 
 Response* RequestHandler::build_delete_response()
 {
-    std::string path;
+	std::string path;
 
-    if (!check_if_method_allowed(this->_location, "DELETE"))
-        return new Response(METHOD_NOT_ALLOWED);
+    this->find_corresponding_location();
+    path = this->get_file_path();
     if (access(path.c_str(), F_OK) != 0)
         return new Response(NOT_FOUND);
     if (unlink(path.c_str()) == 0)

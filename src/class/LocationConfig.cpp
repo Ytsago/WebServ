@@ -5,7 +5,7 @@ LocationConfig::LocationConfig()
   _root(""),
   _index(""),
   _methods(0),
-  _autoindex(0),
+  _autoindex(false),
   _cgiExt(""),
   _cgiPath(""),
   _isCgi(0),
