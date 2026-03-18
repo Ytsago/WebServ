@@ -1,6 +1,5 @@
 #include "FileHandler.hpp"
 #include "HttpParser.hpp"
-#include "Logger.hpp"
 #include <algorithm>
 #include <unistd.h>
 #include <fcntl.h>

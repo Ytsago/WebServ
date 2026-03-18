@@ -1,14 +1,10 @@
 #include "RequestHandler.hpp"
 #include "Response.hpp"
-#include "CgiHandler.hpp"
 #include "StatusCode.hpp"
-#include "FileHandler.hpp"
 #include "utils.hpp"
 #include "Logger.hpp"
 #include <unistd.h>
 #include <sys/epoll.h>
-#include <algorithm>
-#include <map>
 #include <sstream>
 #include <sys/stat.h>
 
@@ -258,7 +254,7 @@ bool	RequestHandler::get_cgi_ext(std::string &ext)
 {
 	std::string	uri = this->_request.getUri();
 	size_t		dot_pos = uri.find_last_of('.');
-	static std::string exts[] = {".php", ".py"};
+	static std::string exts[] = {".php", ".py", ".sh"};
 
 	if (dot_pos == std::string::npos)
 		return false;

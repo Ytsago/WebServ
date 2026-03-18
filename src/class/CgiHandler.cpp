@@ -1,6 +1,5 @@
 #include "CgiHandler.hpp"
 #include "Logger.hpp"
-#include "CgiContainer.hpp"
 #include <fcntl.h>
 #include <sys/epoll.h>
 #include <unistd.h>
@@ -110,6 +109,7 @@ t_pipe CgiHandler::execute_cgi(const ServerConfig &server, HttpRequest &request,
 	char	**envp;
 	int		pipefd[4];
 
+	Logger::record(DEBUG) << "Cgi path: " << location.get_cgi_path() << "\npath: " << path;
 	env = build_env(server, request, location, path);
 	envp = map_to_envp(env);
 	if (access(path.c_str(), X_OK) == -1)

@@ -1,7 +1,6 @@
 #include "HttpParser.hpp"
 #include "StatusCode.hpp"
 #include <algorithm>
-#include "Logger.hpp"
 #include <cstddef>
 #include "utils.hpp"
 

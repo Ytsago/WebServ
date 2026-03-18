@@ -1,5 +1,4 @@
 #include "ConfigParser.hpp"
-#include "Logger.hpp"
 #include <fstream>
 
 ConfigParser::ConfigParser() : _lineCount(0) {}

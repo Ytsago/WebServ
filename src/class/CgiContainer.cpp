@@ -3,7 +3,6 @@
 #include "WebServ.hpp"
 #include "ANetContainer.hpp"
 #include "Logger.hpp"
-#include "CgiHandler.hpp"
 #include <sys/epoll.h>
 #include <unistd.h>
 #include <cstring>
@@ -62,17 +61,20 @@ Response	*CgiContainer::handle_pid()
 	Response	*response = NULL;
 
 	result = waitpid(this->_pid, &status, 0);
-	if (result == -1)
+	if (result == -1) {
 		response = new Response(INTERNAL_SERVER_ERROR);
+	}
 	else 
 	{
 		if (WIFEXITED(status)) 
 		{
 			status_code = WEXITSTATUS(status);
-			if (status_code == 0)
+			if (status_code == 0) {
 				response = new Response(OK, this->_CgiResult, "", true);
-			else
+			}
+			else {
 				response = new Response(INTERNAL_SERVER_ERROR);
+			}
 		} 
 		else if (WIFSIGNALED(status))
 			response = new Response(INTERNAL_SERVER_ERROR);
