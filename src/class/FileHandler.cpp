@@ -4,8 +4,6 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <iostream>
-#include <cerrno>
-#include <cstring>
 
 FileHandler::FileHandler() : _fileFd(-1) {}
 
@@ -183,18 +181,15 @@ void FileHandler::handle_plaintext(const std::vector<char> &chunk)
 	if (_bodySize >= _server->get_client_max_body_size())
 		throw (HttpParser::HttpRequestParsingException(CONTENT_TOO_LARGE));
 	if (!this->_buffer.empty())
-    {
-        ssize_t bytes_written = write(this->_fileFd, &(*this->_buffer.begin()), this->_buffer.size());
-        if (bytes_written < 0)				
-		{
-			std::cout << "FD: " << this->_fileFd << "Bytes: " << bytes_written << " Error: " << std::strerror(errno) << std::endl;
-            throw (HttpParser::HttpRequestParsingException(INTERNAL_SERVER_ERROR));
-		}
-        this->_buffer.erase(this->_buffer.begin(), this->_buffer.begin() + bytes_written);
-    }
-    if (this->_bodySize >= this->_contentLength)
-    {
-        close(this->_fileFd);
-        this->_state = END;
-    }
+	{
+		ssize_t bytes_written = write(this->_fileFd, &(*this->_buffer.begin()), this->_buffer.size());
+		if (bytes_written < 0)
+			throw (HttpParser::HttpRequestParsingException(INTERNAL_SERVER_ERROR));
+		this->_buffer.erase(this->_buffer.begin(), this->_buffer.begin() + bytes_written);
+	}
+	if (this->_bodySize >= this->_contentLength)
+	{
+		close(this->_fileFd);
+		this->_state = END;
+	}
 }
