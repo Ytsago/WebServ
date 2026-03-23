@@ -2,6 +2,7 @@
 #include "WebServ.hpp"
 #include "Logger.hpp"
 #include "utils.hpp"
+#include "HttpParser.hpp"
 #include <dirent.h>
 #include <fstream>
 #include <sstream>
@@ -27,7 +28,8 @@ std::string	int_to_string(int n)
 	std::stringstream 	ss;
 	std::string			str_n;
 
-	ss << n;
+	if (!(ss << n))
+		throw HttpParser::HttpRequestParsingException(INTERNAL_SERVER_ERROR);
 	str_n = ss.str();
 	return (str_n);
 }

@@ -227,7 +227,7 @@ bool	HttpParser::parseBody() {
 		m_body.insert(m_body.end(), m_readBuf.begin() + m_cursor, m_readBuf.begin() + toCopy+ m_cursor);
 		m_cursor += toCopy;
 		m_bodySize += toCopy;
-		if (m_type == MULTIPART)
+		if (m_type == MULTIPART || m_type == TEXT)
 			m_state = COMPLETE;
 	}
 

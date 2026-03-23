@@ -44,19 +44,19 @@ class ClientHandler : public AEventHandler {
         };
 
 	private:
-	int	_pid;
-	const std::vector<ServerConfig>*	_hostConf;
-	const ServerConfig*	_serverConf;
-	HttpParser		_parser;
-	HttpRequest*	_request;
-	ClientState     _state;
+		int	_pid;
+		const std::vector<ServerConfig>*	_hostConf;
+		const ServerConfig*	_serverConf;
+		HttpParser		_parser;
+		HttpRequest*	_request;
+		ClientState     _state;
         Response        *_response;
-        FileHandler     _fileHandler;
+        FileHandler     *_fileHandler;
         size_t          _bytesSent;
         CgiContainer	*_cgiIn;
         CgiContainer	*_cgiOut;
-        bool		_keepAlive;
-
+        bool			_keepAlive;
+		std::string		_contentType;
 };
 
 #endif

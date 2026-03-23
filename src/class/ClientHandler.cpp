@@ -9,10 +9,10 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-ClientHandler::ClientHandler(): AEventHandler(), _hostConf(NULL), _response(NULL) {
+ClientHandler::ClientHandler(): AEventHandler(), _hostConf(NULL), _response(NULL), _fileHandler(NULL) {
 }
 
-ClientHandler::ClientHandler(WebServ& context, ServerHandler& host) : _request(NULL), _state(READING_REQUEST), _response(NULL) {
+ClientHandler::ClientHandler(WebServ& context, ServerHandler& host) : _request(NULL), _state(READING_REQUEST), _response(NULL), _fileHandler(NULL) {
 	Logger::record(SETUP) << "Creating new client.";
 	if ((_fd = accept(host.getSocket(), NULL, NULL)) < 0) {
 		Logger::record(ERROR) << "Failed to accept connection on " << host.getSocket();
@@ -99,20 +99,28 @@ int	ClientHandler::receiveMsg(WebServ& context) {
         	_serverConf = findHostConf();
         	Logger::record(INFO) << "Processing request...";
             RequestHandler handler(*_serverConf, *_request, context.getEpoll());
-            std::string contentType;
 			std::string	ext;
 			if (handler.is_redirection())
 				return build_response(context.getEpoll());
-            if (handler.setupUpload(contentType)) 
+            if (handler.setupUpload(this->_contentType)) 
             {
             	Logger::record(INFO) << "Downloading files...";
-                this->_fileHandler = FileHandler(*_request, _serverConf, contentType);
+                this->_fileHandler = new FileHandler(*_request, _serverConf, this->_contentType, _request->getHeaders()["Content-Length"]);
                 this->_state = WRITING_BODY;
                 if (!this->_request->getBody().empty()) {
                 	try {
-                    this->_fileHandler.multiparse(this->_request->getBody());
-					if (this->_fileHandler.getState() == FileHandler::END)
-						return build_response(context.getEpoll());
+						if (this->_contentType == "multipart/form-data")
+						{
+							this->_fileHandler->multiparse(this->_request->getBody());
+							if (this->_fileHandler->getState() == FileHandler::END)
+								return build_response(context.getEpoll());
+						}
+						if (this->_contentType == "text/plain")
+						{
+							this->_fileHandler->handle_plaintext(this->_request->getBody());
+							if (this->_fileHandler->getState() == FileHandler::END)
+								return build_response(context.getEpoll());
+						}
 					} catch (HttpParser::HttpRequestParsingException &e) {
 						Logger::record(ERROR) << e.what();
 						this->_response = new Response(e.e_status);
@@ -155,14 +163,18 @@ int	ClientHandler::receiveMsg(WebServ& context) {
     {
         std::vector<char> chunk(buffer, buffer + bytes);
         try {
-        this->_fileHandler.multiparse(chunk);
+
+			if (this->_contentType == "multipart/form-data")
+       			this->_fileHandler->multiparse(chunk);
+			if (this->_contentType == "text/plain")
+				this->_fileHandler->handle_plaintext(chunk);
 		} catch (HttpParser::HttpRequestParsingException &e) {
 			Logger::record(ERROR) << e.what();
 			this->_response = new Response(e.e_status);
 			this->_state = SENDING_RESPONSE;
 			return CLT_MSG_END;
 		}
-        if (this->_fileHandler.getState() == FileHandler::END)
+        if (this->_fileHandler->getState() == FileHandler::END)
             return build_response(context.getEpoll());
     }
 	else if (_state == WAITING_CGI) 
@@ -313,4 +325,5 @@ int	ClientHandler::handleEvent(uint32_t event, WebServ& context) {
 ClientHandler::~ClientHandler() {
 	if (_request) delete _request;
 	if (_response) delete _response;
+	if (_fileHandler) delete _fileHandler;
 }

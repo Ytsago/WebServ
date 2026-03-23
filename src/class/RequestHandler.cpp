@@ -247,6 +247,11 @@ bool	RequestHandler::get_upload_type(std::string &content_type)
 		content_type = "multipart/form-data";
 		return true;
 	}
+	if (req_ct.find("text/plain") != std::string::npos) 
+	{
+		content_type = "text/plain";
+		return true;
+	}
 	return false;
 }
 

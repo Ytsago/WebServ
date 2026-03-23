@@ -4,15 +4,19 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <iostream>
+#include <cerrno>
+#include <cstring>
 
 FileHandler::FileHandler() : _fileFd(-1) {}
 
-FileHandler::FileHandler(HttpRequest &request, const ServerConfig *server, std::string &content_type) :
+FileHandler::FileHandler(HttpRequest &request, const ServerConfig *server, std::string &content_type, std::string content_length) :
 	_server(server),
 	_bodySize(0),
+	_contentLength(0),
 	_state(SEARCH_BOUNDARY),
 	_fileFd(-1)
 {
+	this->_uploadPath = "./" + _server->get_root() + "uploads/";
 	if (content_type.find("multipart/form-data") != std::string::npos)
 	{
 		std::string h_content = request.getHeader("Content-Type");
@@ -20,12 +24,29 @@ FileHandler::FileHandler(HttpRequest &request, const ServerConfig *server, std::
 		if (pos != std::string::npos)
 			this->_boundary = "--" + h_content.substr(pos + 9);
 	}
-	this->_uploadPath = "./" + _server->get_root() + "uploads/";
+	if (content_type.find("text/plain") != std::string::npos)
+	{
+		char* endptr;
+		this->_contentLength = std::strtol(content_length.c_str(), &endptr, 10);
+		if (*endptr != '\0')
+		{
+			std::cout << "111111\n";
+			throw (HttpParser::HttpRequestParsingException(INTERNAL_SERVER_ERROR));
+		}
+		this->_filename = this->create_filename();
+		this->_filename = this->_uploadPath + this->_filename;
+		this->_fileFd = open(this->_filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+		if (this->_fileFd < 0)
+			std::cout << "3333\n";
+		this->_state = WRITING_DATA;
+	}
+
 }
 
 FileHandler&	FileHandler::operator=(const FileHandler& other) {
 	if (this != &other) {
 		_state = other._state;
+		_contentLength = other._contentLength;
 		_fileFd = other._fileFd;
 		_boundary = other._boundary;
 		_buffer = other._buffer;
@@ -73,6 +94,13 @@ static std::string extract_filename(std::vector<char>::iterator begin, std::vect
 	return (sanitize_filename(filename));
 }
 
+std::string FileHandler::create_filename()
+{
+	std::string filename = "plaintext_file";
+	
+	return (sanitize_filename(filename));
+}
+
 void FileHandler::multiparse(const std::vector<char> &chunk) 
 {
 	this->_buffer.insert(this->_buffer.end(), chunk.begin(), chunk.end());
@@ -109,7 +137,10 @@ void FileHandler::multiparse(const std::vector<char> &chunk)
 			{
 				size_t boundary_offset = std::distance(this->_buffer.begin(), it);
 				if (boundary_offset >= 2)
-					write(this->_fileFd, &(*this->_buffer.begin()), boundary_offset - 2);
+				{
+					if (write(this->_fileFd, &(*this->_buffer.begin()), boundary_offset - 2) < 1)
+						throw (HttpParser::HttpRequestParsingException(INTERNAL_SERVER_ERROR));
+				}
 				close(this->_fileFd);
 				bool is_end = false;
 				if (std::distance(it + this->_boundary.size(), this->_buffer.end()) >= 2)
@@ -133,7 +164,8 @@ void FileHandler::multiparse(const std::vector<char> &chunk)
 				if (this->_buffer.size() > this->_boundary.size() + 4) 
 				{
 					size_t write_size = this->_buffer.size() - (this->_boundary.size() + 4);
-					write(this->_fileFd, &(*this->_buffer.begin()), write_size);
+					if (write(this->_fileFd, &(*this->_buffer.begin()), write_size) < 1)
+						throw (HttpParser::HttpRequestParsingException(INTERNAL_SERVER_ERROR));
 					this->_buffer.erase(this->_buffer.begin(), this->_buffer.begin() + write_size);
 				}
 				break; 
@@ -142,4 +174,27 @@ void FileHandler::multiparse(const std::vector<char> &chunk)
 		if (this->_state == END)
 			break;
 	}
+}
+
+void FileHandler::handle_plaintext(const std::vector<char> &chunk) 
+{
+	this->_buffer.insert(this->_buffer.end(), chunk.begin(), chunk.end());
+	_bodySize += chunk.size();
+	if (_bodySize >= _server->get_client_max_body_size())
+		throw (HttpParser::HttpRequestParsingException(CONTENT_TOO_LARGE));
+	if (!this->_buffer.empty())
+    {
+        ssize_t bytes_written = write(this->_fileFd, &(*this->_buffer.begin()), this->_buffer.size());
+        if (bytes_written < 0)				
+		{
+			std::cout << "FD: " << this->_fileFd << "Bytes: " << bytes_written << " Error: " << std::strerror(errno) << std::endl;
+            throw (HttpParser::HttpRequestParsingException(INTERNAL_SERVER_ERROR));
+		}
+        this->_buffer.erase(this->_buffer.begin(), this->_buffer.begin() + bytes_written);
+    }
+    if (this->_bodySize >= this->_contentLength)
+    {
+        close(this->_fileFd);
+        this->_state = END;
+    }
 }
