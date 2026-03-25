@@ -115,9 +115,12 @@ ServerConfig	ConfigParser::parse_server(std::ifstream &file)
 		}
 		else if (key == "error_page")
 		{
+			if (!(ss >> i_value))
+				throw ConfigException("Invalid error_page value", this->_lineCount);
 			if (!(ss >> s_value))
 				throw ConfigException("Invalid error_page value", this->_lineCount);
-			server.set_error_page(s_value);
+			std::pair<int, std::string> pair(i_value, s_value);
+			server.push_error_page(pair);
 		}
 		else if (key == "client_max_body_size")
 		{

@@ -3,7 +3,7 @@
 #include "utils.hpp"
 #include <unistd.h>
 
-Response::Response(int code, byteVector body, std::string path, bool connection)
+Response::Response(int code, const ServerConfig *server, byteVector body, std::string path, bool connection) : _server(server)
 {
 	_status_code = code;
 	std::string status = "Unknown Status";
@@ -14,7 +14,7 @@ Response::Response(int code, byteVector body, std::string path, bool connection)
 	this->_full_response.insert(this->_full_response.end(), body.begin(), body.end());
 }
 
-Response::Response(const Response &other) {
+Response::Response(const Response &other) : _server(other._server) {
 	(void)other;
 }
 
@@ -78,13 +78,24 @@ static std::string	get_http_date()
 
 void	Response::build_header(size_t body_size, std::string path, bool connection)
 {
-	std::string			str_size;
+	std::string	str_size;
 	std::string	buffer;
 	std::string	body;
+	std::string	error_page;
 
 	str_size = int_to_string(body_size);
 	if (_status_code >= 400)
-		body = ERROR_PAGE + int_to_string(_status_code) + " "+ g_status_map[_status_code] + ERROR_PAGE_END;
+	{
+		error_page = this->_server->get_error_page(_status_code);
+		if (!error_page.empty() || access(error_page.c_str(), R_OK))
+		{
+			byteVector vecBody = GetFile(error_page);
+			body.insert(body.end(), vecBody.begin(), vecBody.end());
+			std::cout << error_page;
+		}
+		else
+			body = ERROR_PAGE + int_to_string(_status_code) + " "+ g_status_map[_status_code] + ERROR_PAGE_END;
+	}
 	if (_status_code == 301)
 		buffer += "Location: " + path + "\r\n";
 	if (_status_code != 204 && _status_code != 304) {

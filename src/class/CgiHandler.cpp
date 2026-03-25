@@ -112,16 +112,21 @@ t_pipe CgiHandler::execute_cgi(WebServ& context, const ServerConfig &server, Htt
 
 	env = build_env(server, request, location, path);
 	envp = map_to_envp(env);
+	if (access(path.c_str(), F_OK) == -1)
+	{
+		pid = F_NOT_FOUND;
+		return (t_pipe){-1, -1};
+	}
 	if (access(path.c_str(), X_OK) == -1)
 	{
-		pid = -1;
+		pid = F_FORBIDDEN;
 		return (t_pipe){-1, -1};
 	}
 	for (int i = 0; i < 2; i++)
 	{
 		if (pipe(pipefd + i * 2) == -1)
 		{
-			pid = -1;
+			pid = PIPE_ERR;
 			return (t_pipe) {-1, -1};
 		}
 	}

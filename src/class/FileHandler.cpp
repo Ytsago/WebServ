@@ -22,20 +22,17 @@ FileHandler::FileHandler(HttpRequest &request, const ServerConfig *server, std::
 		if (pos != std::string::npos)
 			this->_boundary = "--" + h_content.substr(pos + 9);
 	}
-	if (content_type.find("text/plain") != std::string::npos)
+	if (content_type.find("plain/text") != std::string::npos)
 	{
 		char* endptr;
 		this->_contentLength = std::strtol(content_length.c_str(), &endptr, 10);
 		if (*endptr != '\0')
-		{
-			std::cout << "111111\n";
 			throw (HttpParser::HttpRequestParsingException(INTERNAL_SERVER_ERROR));
-		}
 		this->_filename = this->create_filename();
 		this->_filename = this->_uploadPath + this->_filename;
 		this->_fileFd = open(this->_filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
 		if (this->_fileFd < 0)
-			std::cout << "3333\n";
+			throw (HttpParser::HttpRequestParsingException(INTERNAL_SERVER_ERROR));
 		this->_state = WRITING_DATA;
 	}
 
@@ -124,6 +121,8 @@ void FileHandler::multiparse(const std::vector<char> &chunk)
 			this->_filename = extract_filename(this->_buffer.begin(), it);
 			this->_filename = this->_uploadPath + this->_filename;
 			this->_fileFd = open(this->_filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+			if (this->_fileFd < 0)
+				throw (HttpParser::HttpRequestParsingException(INTERNAL_SERVER_ERROR));
 			this->_buffer.erase(this->_buffer.begin(), it + 4);
 			this->_state = WRITING_DATA;
 		}

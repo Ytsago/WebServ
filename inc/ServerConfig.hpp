@@ -2,6 +2,7 @@
 #define SERVERCONFIG_HPP
 
 #include "LocationConfig.hpp"
+#include <map>
 
 class ServerConfig
 {
@@ -13,7 +14,7 @@ class ServerConfig
 		std::string					_serverName;
 		std::string					_root;
 		std::string					_index;
-		std::string					_errorPage;
+		std::map<int, std::string>	_errorPages;
 		size_t						_clientMaxBodySize;
 		LocationConfig				_defaultLocation;
 		bool						_isDefaultSet;
@@ -32,7 +33,7 @@ class ServerConfig
 		std::string					get_server_name() const;
 		std::string					get_root() const;
 		std::string					get_index() const;
-		std::string					get_error_page() const;
+		std::string					get_error_page(int code) const;
 		size_t						get_client_max_body_size() const;
 		LocationConfig				get_default_location() const;
 		bool						is_default_set() const;
@@ -44,7 +45,7 @@ class ServerConfig
 		void	set_server_name(std::string value);
 		void	set_root(std::string value);
 		void	set_index(std::string value);
-		void	set_error_page(std::string value);
+		void	push_error_page(std::pair<int, std::string> value);
 		void	set_client_mbs(size_t value);
 		void	set_default_location(LocationConfig value);
 		void	set_is_default_set(bool value);

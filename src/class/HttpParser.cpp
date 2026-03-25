@@ -82,7 +82,7 @@ void	HttpParser::parseMediaType(std::string& rawMedia) {
 	if (m_subtype.empty()) {
 		throw HttpRequestParsingException(BAD_REQUEST);
 	}
-	if (media == "text") m_type = TEXT;
+	if (media == "text" || media == "plain") m_type = TEXT;
 	else if (media == "application") m_type = APPLICATION;
 	else if (media == "multipart") m_type = MULTIPART;
 	else throw HttpRequestParsingException(UNSUPORTED_MEDIA_TYPE);

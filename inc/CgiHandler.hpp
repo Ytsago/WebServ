@@ -12,6 +12,8 @@ typedef struct s_pipe {
 	int	outFd;
 } t_pipe;
 
+enum pidValue {F_NOT_FOUND = -3, F_FORBIDDEN = -2, PIPE_ERR = -1};
+
 class CgiHandler
 {
 	private:

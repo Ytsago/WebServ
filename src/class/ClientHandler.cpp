@@ -85,7 +85,7 @@ int	ClientHandler::receiveMsg(WebServ& context) {
 		}
 		catch (HttpParser::HttpRequestParsingException &e) {
 			Logger::record(ERROR) << e.what();
-			this->_response = new Response(e.e_status);
+			this->_response = new Response(e.e_status, this->_serverConf);
 			this->_state = SENDING_RESPONSE;
 			return CLT_MSG_END;
 		}
@@ -117,7 +117,7 @@ int	ClientHandler::receiveMsg(WebServ& context) {
 							if (this->_fileHandler->getState() == FileHandler::END)
 								return build_response(context.getEpoll());
 						}
-						if (this->_contentType == "text/plain")
+						if (this->_contentType == "plain/text")
 						{
 							this->_fileHandler->handle_plaintext(this->_request->getBody());
 							if (this->_fileHandler->getState() == FileHandler::END)
@@ -125,7 +125,7 @@ int	ClientHandler::receiveMsg(WebServ& context) {
 						}
 					} catch (HttpParser::HttpRequestParsingException &e) {
 						Logger::record(ERROR) << e.what();
-						this->_response = new Response(e.e_status);
+						this->_response = new Response(e.e_status, this->_serverConf);
 						this->_state = SENDING_RESPONSE;
 						return CLT_MSG_END;
 					}
@@ -136,21 +136,34 @@ int	ClientHandler::receiveMsg(WebServ& context) {
 				this->_response = handler.handle_request();
 				std::string	path = handler.get_cgi_path();
 				t_pipe	fds = CgiHandler::execute_cgi(context, handler.getServer(), *_request, handler.getLocation(), path, _pid);
-				if (_pid == -1)
+				if (_pid < 0)
 				{
 					Logger::record(ERROR) << "CGI could not be created";
 					if (_response) delete _response;
-					this->_response = new Response(INTERNAL_SERVER_ERROR);
+					switch (_pid)
+					{
+						case F_FORBIDDEN:
+							this->_response = new Response(FORBIDDEN, this->_serverConf);
+							break;
+						case F_NOT_FOUND:
+							this->_response = new Response(NOT_FOUND, this->_serverConf);
+							break;
+						case PIPE_ERR:
+							this->_response = new Response(INTERNAL_SERVER_ERROR, this->_serverConf);
+							break;
+						default:
+							this->_response = new Response(INTERNAL_SERVER_ERROR, this->_serverConf);
+					}
 					this->_state = SENDING_RESPONSE;
 					this->activateEpoll(context.getEpoll(), EPOLLOUT);
 					return CLT_MSG_END;
 				}
-				_cgiIn = new CgiContainer(context.getEpoll(), *this, fds.inFd, EPOLLOUT, _pid);
+				_cgiIn = new CgiContainer(context.getEpoll(), *this, fds.inFd, EPOLLOUT, _pid, this->_serverConf);
 				context.getTimeList().push_front(_cgiIn);
 				_cgiIn->setTimeoutIt(context.getTimeList().begin());
 				context.getRegistery()[_cgiIn->getSocket()] = _cgiIn;
 
-				_cgiOut = new CgiContainer(context.getEpoll(), *this, fds.outFd, EPOLLIN, _pid);
+				_cgiOut = new CgiContainer(context.getEpoll(), *this, fds.outFd, EPOLLIN, _pid, this->_serverConf);
 				context.getTimeList().push_front(_cgiOut);
 				_cgiOut->setTimeoutIt(context.getTimeList().begin());
 				context.getRegistery()[_cgiOut->getSocket()] = _cgiOut;
@@ -168,11 +181,11 @@ int	ClientHandler::receiveMsg(WebServ& context) {
 
 			if (this->_contentType == "multipart/form-data")
        			this->_fileHandler->multiparse(chunk);
-			if (this->_contentType == "text/plain")
+			if (this->_contentType == "plain/text")
 				this->_fileHandler->handle_plaintext(chunk);
 		} catch (HttpParser::HttpRequestParsingException &e) {
 			Logger::record(ERROR) << e.what();
-			this->_response = new Response(e.e_status);
+			this->_response = new Response(e.e_status, this->_serverConf);
 			this->_state = SENDING_RESPONSE;
 			return CLT_MSG_END;
 		}
@@ -273,9 +286,9 @@ bool	ClientHandler::sendTimeout(WebServ& context) {
 		if (_response) delete _response;
 		_keepAlive = false;
 		if (_pid != -1)
-			_response = new Response(GATEWAY_TIMEOUT);
+			_response = new Response(GATEWAY_TIMEOUT, this->_serverConf);
 		else
-			_response = new Response(REQUEST_TIMEOUT);
+			_response = new Response(REQUEST_TIMEOUT, this->_serverConf);
 		_state = TIMED_OUT;
 		epoll_event ev;
 		ev.events = EPOLLOUT;

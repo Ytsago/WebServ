@@ -18,10 +18,11 @@ class Response
 
 		byteVector	_full_response;
 		int			_status_code;
+		const ServerConfig	*_server;
 
 	public:
 
-		Response(int code, byteVector body = byteVector(), std::string path = "", bool connection = false);
+		Response(int code, const ServerConfig *server = NULL, byteVector body = byteVector(), std::string path = "", bool connection = false);
 		~Response();
 		Response(const Response &other);
 		Response &operator=(const Response &other);

@@ -9,9 +9,9 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-CgiContainer::CgiContainer(int epollFd, ClientHandler& parent, int fd, int event, pid_t pid) :
+CgiContainer::CgiContainer(int epollFd, ClientHandler& parent, int fd, int event, pid_t pid, const ServerConfig *server) :
 	AEventHandler(),
-	_pid(pid), _state(0), _index(0), _parent(parent) {
+	_pid(pid), _state(0), _index(0), _parent(parent), _server(server) {
 	if (fd < 0)
         throw AEventHandler::HandlerException("Invalid File Descriptor passed to CGI");
 	_fd = fd;
@@ -66,7 +66,7 @@ Response	*CgiContainer::handle_pid()
 
 	result = waitpid(this->_pid, &status, 0);
 	if (result == -1) {
-		response = new Response(INTERNAL_SERVER_ERROR);
+		response = new Response(INTERNAL_SERVER_ERROR, this->_server);
 	}
 	else 
 	{
@@ -74,14 +74,14 @@ Response	*CgiContainer::handle_pid()
 		{
 			status_code = WEXITSTATUS(status);
 			if (status_code == 0) {
-				response = new Response(OK, this->_CgiResult, "", true);
+				response = new Response(OK, this->_server, this->_CgiResult, "", true);
 			}
 			else {
-				response = new Response(INTERNAL_SERVER_ERROR);
+				response = new Response(INTERNAL_SERVER_ERROR, this->_server);
 			}
 		} 
 		else if (WIFSIGNALED(status))
-			response = new Response(INTERNAL_SERVER_ERROR);
+			response = new Response(INTERNAL_SERVER_ERROR, this->_server);
 	}
 	return response;
 }
