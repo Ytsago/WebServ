@@ -4,7 +4,7 @@
 
 int main(int ac, char* const av[]) {
 	Logger::upColor();
-	if (ac == 2)
+	if (ac <= 2)
 	{
 		try {
 			WebServ	server;

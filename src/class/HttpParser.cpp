@@ -4,8 +4,11 @@
 #include <cstddef>
 #include "utils.hpp"
 
+#define MAX_HEADER_SIZE 8192
+#define MAX_URI_SIZE 2048
+
 HttpParser::HttpParser() : m_state(REQUEST_LINE), m_type(NONE), m_cursor(0), m_bodySize(0), m_readBuf() {
-	m_readBuf.reserve(8192);
+	m_readBuf.reserve(MAX_HEADER_SIZE);
 	m_headers.reserve(20);
 }
 
@@ -14,7 +17,7 @@ std::string	HttpParser::getHeader(const std::string& key) const {return m_header
 bool	HttpParser::isComplete() const {return m_state == COMPLETE;}
 
 void	HttpParser::consume(const char* data, size_t len) {
-	if (len + m_readBuf.size() > 8192 && m_state != BODY)
+	if (len + m_readBuf.size() > MAX_HEADER_SIZE && m_state != BODY)
 		throw HttpRequestParsingException(REQUEST_HEADER_FIELD_TOO_LARGE);
 	m_readBuf.insert(m_readBuf.end(), data, data + len);
 
@@ -36,13 +39,13 @@ bool	HttpParser::parseRequestLine() {
 	std::vector<char>::iterator	itEndLine = std::search(itStart, m_readBuf.end(), "\r\n", ("\r\n") +2);
 
 	if (itEndLine == m_readBuf.end()) {
-		if (m_readBuf.size() - m_cursor > 2048) {
+		if (m_readBuf.size() - m_cursor > MAX_URI_SIZE) {
 			throw HttpRequestParsingException(URI_TOO_LONG);
 		}
 		return false;
 	}
 	
-	if (std::distance(itStart, itEndLine) > 2048)
+	if (std::distance(itStart, itEndLine) > MAX_URI_SIZE)
 		throw HttpRequestParsingException(URI_TOO_LONG);
 
 	std::vector<char>::iterator itFirstSpace, itSecondSpace;

@@ -210,19 +210,22 @@ byteVector RequestHandler::get_autodindex(const std::string& path)
 
 Response* RequestHandler::build_get_response(std::string &path)
 {
-	byteVector		file;
 	byteVector		body;
+	struct stat		fs;
 
-	file = GetFile(path);
 	body = this->get_autodindex(path);
 	if (body.size() > 0)
 		return new Response(OK, body, path, true);
-	if (file.empty() || access(path.c_str(), F_OK) != 0)
+	if (stat(path.c_str(), &fs) < 0)
+		return new Response(INTERNAL_SERVER_ERROR);
+	if (access(path.c_str(), F_OK) != 0 || !S_ISDIR(fs.st_mode))
 	{
 		Logger::record(INFO) << "File not found: " << path;
 		return new Response(NOT_FOUND);
 	}
-	return new Response(OK, file, path, true);
+	if (access(path.c_str(), R_OK) != 0)
+		return new Response(FORBIDDEN);
+	return new Response(OK, path, true);
 }
 
 Response* RequestHandler::build_delete_response()
