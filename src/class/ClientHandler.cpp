@@ -215,19 +215,38 @@ int ClientHandler::build_response(int epollFd)
 
 void ClientHandler::handleWrite(WebServ& context) 
 {
+	ssize_t sent;
     if ((this->_state != SENDING_RESPONSE && _state != TIMED_OUT) || !this->_response)  {
     	_keepAlive = false;
     	_state = END;
         return;
     }
     byteVector &resStr = this->_response->get_full_response();
-	ssize_t sent = send(this->_fd, resStr.data() + this->_bytesSent, resStr.size() - this->_bytesSent, MSG_NOSIGNAL);
+    if (_bytesSent >= resStr.size()) {
+    	char	buffer[BUFFSIZE];
+    	std::ifstream&	file = _response->getFileStream();
+    	ssize_t	reamingSize = _response->getFileSize() -_bytesSent + resStr.size();
+    	ssize_t	size = (reamingSize > BUFFSIZE ? BUFFSIZE : reamingSize);
+
+		file.read(buffer, size);
+		if (file.bad()) {
+			if (_response) delete _response;
+			_response = new Response(INTERNAL_SERVER_ERROR);
+			_bytesSent = 0;
+			Logger::record(WARNING) << "Failed to read file";
+			return ;
+		}
+    	sent = send(_fd, buffer, size, MSG_DONTWAIT);
+    	// _response->reduceFileSize(sent);
+    }
+    else
+		sent = send(this->_fd, resStr.data() + this->_bytesSent, resStr.size() - this->_bytesSent, MSG_NOSIGNAL);
 	if (sent > 0) 
 	{
 		_lastAlive = std::time(NULL);
 		context.getTimeList().splice(context.getTimeList().begin(), context.getTimeList(), timeout_it);
 		this->_bytesSent += sent;
-		if (this->_bytesSent >= resStr.size())
+		if (this->_bytesSent >= resStr.size() + _response->getFileSize())
 		{
 			Logger::record(INFO) << "Response sent to client " << _fd;
 			this->_bytesSent = 0;

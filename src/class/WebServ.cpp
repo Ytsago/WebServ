@@ -89,11 +89,9 @@ void	WebServ::checkTimeout() {
 			ClientHandler*	clt = dynamic_cast<ClientHandler*>(curr);
 			if (!clt)
 				deadsHandler.insert(curr);
-				// removeHandler(curr);
 			else
 				if (clt->sendTimeout(*this))
 					deadsHandler.insert(curr);
-					// removeHandler(curr);
 		}
 		else
 			return ;
@@ -103,8 +101,14 @@ void	WebServ::checkTimeout() {
 void	WebServ::run(const char *arg) {
 	epoll_event	events[MAXEVENT];
 
-	if (setConfig(arg) == CONFIG_KO)
-		throw std::runtime_error("Config KO");
+	if (!arg) {
+		if (setConfig("./config/server.conf") == CONFIG_KO)
+			throw std::runtime_error("Config KO");
+	}
+	else {
+		if (setConfig(arg) == CONFIG_KO)
+			throw std::runtime_error("Config KO");
+	}
 	initHost();
 
 	while(g_running) {
@@ -120,7 +124,6 @@ void	WebServ::run(const char *arg) {
 				case CGI_END:
 				case CGI_KO:
 					deadsHandler.insert(incoming);
-					// removeHandler(incoming);
 					break;
 
 				default:

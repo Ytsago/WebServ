@@ -5,6 +5,7 @@
 
 Response::Response(int code, const ServerConfig *server, byteVector body, std::string path, bool connection) : _server(server)
 {
+	_fileSize = 0;
 	_status_code = code;
 	std::string status = "Unknown Status";
 	if (g_status_map.count(code))
@@ -12,6 +13,34 @@ Response::Response(int code, const ServerConfig *server, byteVector body, std::s
 	this->build_entry_line(code, status);
 	this->build_header(body.size(), path, connection);
 	this->_full_response.insert(this->_full_response.end(), body.begin(), body.end());
+}
+
+Response::Response(int code, const ServerConfig *server, std::string path, bool connection)
+{
+	_status_code = code;
+	std::string status = "Unknown Status";
+	if (g_status_map.count(code))
+        status = g_status_map[code];
+    _file.open(path.c_str(), std::ios::ate | std::ios::binary);
+    if (!_file.is_open()) {
+    	status = g_status_map[INTERNAL_SERVER_ERROR];
+    	_fileSize = 0;
+    } else {
+    	_fileSize = _file.tellg();
+    	_file.seekg(std::ios::beg);
+    }
+	this->build_entry_line(code, status);
+	this->build_header(_fileSize, path, connection);
+}
+
+Response::Response(int code, const ServerConfig *server) {
+	_fileSize = 0;
+	_status_code = code;
+	std::string status = "Unknown Status";
+	if (g_status_map.count(code))
+        status = g_status_map[code];
+	this->build_entry_line(code, status);
+	this->build_header(0, "", false);
 }
 
 Response::Response(const Response &other) : _server(other._server) {
@@ -23,10 +52,13 @@ Response	&Response::operator=(const Response &other) {
 	return (*this);
 }
 
-Response::~Response() {}
+Response::~Response() { if (_file.is_open()) _file.close();}
 
 byteVector	&Response::get_full_response() {return this->_full_response;}
 int			Response::getStatusCode() const {return _status_code;}
+std::ifstream&	Response::getFileStream() {return _file;}
+std::streamsize	Response::getFileSize() {return _fileSize;}
+void	Response::reduceFileSize(ssize_t size) {_fileSize -= size;}
 
 void	Response::build_entry_line(int code, std::string status)
 {

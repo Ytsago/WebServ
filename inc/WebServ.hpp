@@ -6,7 +6,7 @@
 #include <set>
 #include "ConfigParser.hpp"
 
-#define BUFFSIZE 4096
+#define BUFFSIZE 8192
 #define MAXEVENT 1024
 #define TIMEOUT 10
 
