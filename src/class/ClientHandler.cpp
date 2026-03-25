@@ -49,7 +49,7 @@ Response&	ClientHandler::getResponse() { return *_response;}
 
 void	ClientHandler::setResponse(Response *response) {if (_response) delete _response; _response = response;}
 
-const ServerConfig*	ClientHandler::findHostConf() {
+const ServerConfig	ClientHandler::findHostConf() {
 	std::vector<ServerConfig>::const_iterator	it = _hostConf->begin();
 
 	for (; it != _hostConf->end(); it++) {
@@ -57,9 +57,9 @@ const ServerConfig*	ClientHandler::findHostConf() {
 		strLower(host);
 		std::string	hostWithPort = host + ":" + int_to_string(it->get_listen_port());
 		if (host == _request->getHeaders()["host"] || hostWithPort == _request->getHeaders()["host"])
-			return &(*it);
+			return (*it);
 	}
-	return &(*_hostConf->begin());
+	return (*_hostConf->begin());
 }
 
 int	ClientHandler::receiveMsg(WebServ& context) {
@@ -100,14 +100,14 @@ int	ClientHandler::receiveMsg(WebServ& context) {
         		_keepAlive = false;
         	_serverConf = findHostConf();
         	Logger::record(INFO) << "Processing request...";
-            RequestHandler handler(*_serverConf, *_request, context.getEpoll());
+            RequestHandler handler(_serverConf, *_request, context.getEpoll());
 			std::string	ext;
 			if (handler.is_redirection())
 				return build_response(context.getEpoll());
             if (handler.setupUpload(this->_contentType)) 
             {
             	Logger::record(INFO) << "Downloading files...";
-                this->_fileHandler = new FileHandler(*_request, _serverConf, this->_contentType, _request->getHeaders()["Content-Length"]);
+                this->_fileHandler = new FileHandler(*_request, &_serverConf, this->_contentType, _request->getHeaders()["Content-Length"]);
                 this->_state = WRITING_BODY;
                 if (!this->_request->getBody().empty()) {
                 	try {
@@ -206,7 +206,7 @@ int	ClientHandler::receiveMsg(WebServ& context) {
 int ClientHandler::build_response(int epollFd) 
 {
 	Logger::record(INFO) << "Building response...";
-    RequestHandler handler(*_serverConf, *_request, epollFd);
+    RequestHandler handler(_serverConf, *_request, epollFd);
     if (_response) delete _response;
    	this->_response = handler.handle_request();
     this->_state = SENDING_RESPONSE;
@@ -230,14 +230,11 @@ void ClientHandler::handleWrite(WebServ& context)
 
 		file.read(buffer, size);
 		if (file.bad()) {
-			if (_response) delete _response;
-			_response = new Response(INTERNAL_SERVER_ERROR);
-			_bytesSent = 0;
-			Logger::record(WARNING) << "Failed to read file";
+			_state = END;
+			_keepAlive = false;
 			return ;
 		}
     	sent = send(_fd, buffer, size, MSG_DONTWAIT);
-    	// _response->reduceFileSize(sent);
     }
     else
 		sent = send(this->_fd, resStr.data() + this->_bytesSent, resStr.size() - this->_bytesSent, MSG_NOSIGNAL);
@@ -287,7 +284,6 @@ void	ClientHandler::resetClient(int epollFd) {
 	epoll_event	ev;
 	ev.events = EPOLLIN;
 	ev.data.ptr = this;
-	_serverConf = NULL;
 	epoll_ctl(epollFd, EPOLL_CTL_MOD, _fd, &ev);
 }
 

@@ -2,8 +2,7 @@
 #include <unistd.h>
 
 ServerConfig::ServerConfig() 
-: _socket(-1),
-  _listenPort(0),
+: _listenPort(0),
   _host(""),
   _serverName(""),
   _root(""),
@@ -15,8 +14,7 @@ ServerConfig::ServerConfig()
   _locations(0) {}
 
 ServerConfig::ServerConfig(const ServerConfig &rhs)
-: _socket(rhs._socket),
-  _listenPort(rhs._listenPort),
+: _listenPort(rhs._listenPort),
   _host(rhs._host),
   _serverName(rhs._serverName),
   _root(rhs._root),
@@ -46,12 +44,8 @@ ServerConfig	&ServerConfig::operator=(const ServerConfig &rhs)
 }
 
 ServerConfig::~ServerConfig() 
-{
-	if (this->_socket > 0)
-		close(this->_socket);
-}
+{}
 
-int							ServerConfig::get_socket() const {return (this->_socket);};
 int							ServerConfig::get_listen_port() const {return (this->_listenPort);};
 std::string					ServerConfig::get_host() const {return (this->_host);};
 std::string					ServerConfig::get_server_name() const {return (this->_serverName);};
@@ -69,7 +63,6 @@ std::string					ServerConfig::get_error_page(int code) const
 	return "";
 };
 
-void	ServerConfig::set_socket(int value) {this->_socket = value;};
 void	ServerConfig::set_listen_port(int value) {this->_listenPort = value;};
 void	ServerConfig::set_host(std::string value) {this->_host = value;};
 void	ServerConfig::set_server_name(std::string value) {this->_serverName = value;};

@@ -9,7 +9,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-CgiContainer::CgiContainer(int epollFd, ClientHandler& parent, int fd, int event, pid_t pid, const ServerConfig *server) :
+CgiContainer::CgiContainer(int epollFd, ClientHandler& parent, int fd, int event, pid_t pid, ServerConfig server) :
 	AEventHandler(),
 	_pid(pid), _state(0), _index(0), _parent(parent), _server(server) {
 	if (fd < 0)

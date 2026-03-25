@@ -3,7 +3,7 @@
 #include "utils.hpp"
 #include <unistd.h>
 
-Response::Response(int code, const ServerConfig *server, byteVector body, std::string path, bool connection) : _server(server)
+Response::Response(int code, const ServerConfig server, byteVector body, std::string path, bool connection) : _server(server)
 {
 	_fileSize = 0;
 	_status_code = code;
@@ -15,7 +15,7 @@ Response::Response(int code, const ServerConfig *server, byteVector body, std::s
 	this->_full_response.insert(this->_full_response.end(), body.begin(), body.end());
 }
 
-Response::Response(int code, const ServerConfig *server, std::string path, bool connection)
+Response::Response(int code, const ServerConfig server, std::string path, bool connection) : _server(server)
 {
 	_status_code = code;
 	std::string status = "Unknown Status";
@@ -33,7 +33,7 @@ Response::Response(int code, const ServerConfig *server, std::string path, bool 
 	this->build_header(_fileSize, path, connection);
 }
 
-Response::Response(int code, const ServerConfig *server) {
+Response::Response(int code, const ServerConfig server) : _server(server) {
 	_fileSize = 0;
 	_status_code = code;
 	std::string status = "Unknown Status";
@@ -118,21 +118,32 @@ void	Response::build_header(size_t body_size, std::string path, bool connection)
 	str_size = int_to_string(body_size);
 	if (_status_code >= 400)
 	{
-		error_page = this->_server->get_error_page(_status_code);
-		if (!error_page.empty() || access(error_page.c_str(), R_OK))
+		error_page = this->_server.get_error_page(_status_code);
+		if (!error_page.empty() && access(error_page.c_str(), R_OK))
 		{
-			byteVector vecBody = GetFile(error_page);
-			body.insert(body.end(), vecBody.begin(), vecBody.end());
-			std::cout << error_page;
+			error_page = this->_server.get_root() + error_page;
+			_file.open(error_page.c_str(), std::ios::ate | std::ios::binary);
+			if (!_file.is_open()) {
+				body = ERROR_PAGE + int_to_string(_status_code) + " "+ g_status_map[_status_code] + ERROR_PAGE_END;
+				_fileSize = 0;
+				body_size = body.size();
+			} else {
+				_fileSize = _file.tellg();
+				_file.seekg(std::ios::beg);
+				body_size = _fileSize;
+			}
 		}
 		else
+		{
 			body = ERROR_PAGE + int_to_string(_status_code) + " "+ g_status_map[_status_code] + ERROR_PAGE_END;
+			body_size = body.size();
+		}
 	}
 	if (_status_code == 301)
 		buffer += "Location: " + path + "\r\n";
 	if (_status_code != 204 && _status_code != 304) {
 		if (_status_code >= 400)
-			str_size = int_to_string(body.size());
+			str_size = int_to_string(body_size);
 		buffer += "Content-Length: " + str_size + "\r\n";
 	}
 	if (body_size > 0)

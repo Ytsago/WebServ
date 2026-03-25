@@ -9,21 +9,6 @@
 #include <sys/epoll.h>
 #include <sys/stat.h>
 
-//TODO maybe change the logic to send just part of the file in each send()
-byteVector	GetFile(std::string path) {
-	std::ifstream	file(path.c_str(), std::ios::binary | std::ios::ate);
-	std::streamsize size = file.tellg();
-
-	file.seekg(std::ios::beg);
-	if (size == -1 || size > MAX_FILE_SIZE)
-		return byteVector();
-	byteVector	buffer(size);
-	if (file.read(buffer.data(), size)) {
-		return buffer;
-	}
-	return byteVector();
-}
-
 std::string	int_to_string(int n)
 {
 	std::stringstream 	ss;

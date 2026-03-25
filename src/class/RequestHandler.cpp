@@ -172,26 +172,26 @@ Response* RequestHandler::handle_request()
 	{
 		path = this->_location.get_redirection();
 		body.insert(body.end(), path.begin(), path.end());
-		return new Response(MOVED_PERMANENTLY, &this->_server, body, path, false);
+		return new Response(MOVED_PERMANENTLY, this->_server, body, path, false);
 	}
 	path = this->get_file_path();
 	if (method != "DELETE" && method != "POST" && method != "GET")
-		return new Response(NOT_IMPLEMENTED, &this->_server);
+		return new Response(NOT_IMPLEMENTED, this->_server);
 	if (method == "DELETE") 
 		return this->build_delete_response();
 	if (!check_if_method_allowed(this->_location, method))
-		return new Response(METHOD_NOT_ALLOWED, &this->_server);
+		return new Response(METHOD_NOT_ALLOWED, this->_server);
 	if (this->get_cgi_ext(ext))
 	{
 		if (this->get_cgi_loc(ext))
-			return new Response(NOT_IMPLEMENTED, &this->_server, byteVector(), path, true);
-		return new Response(OK, &this->_server, byteVector(), path, true);
+			return new Response(NOT_IMPLEMENTED, this->_server, byteVector(), path, true);
+		return new Response(OK, this->_server, byteVector(), path, true);
 	}
 	if (method == "GET")
 		return this->build_get_response(path);
 	else if (method == "POST") 
-		return new Response(CREATED, &this->_server, byteVector(), path, true);
-	return new Response(NOT_IMPLEMENTED, &this->_server);
+		return new Response(CREATED, this->_server, byteVector(), path, true);
+	return new Response(NOT_IMPLEMENTED, this->_server);
 }
 
 byteVector RequestHandler::get_autodindex(const std::string& path)
@@ -217,19 +217,15 @@ Response* RequestHandler::build_get_response(std::string &path)
 
 	body = this->get_autodindex(path);
 	if (body.size() > 0)
-		return new Response(OK, &this->_server, body, path, true);
-	if (access(path.c_str(), F_OK) != 0)
-		return new Response(OK, body, path, true);
-	if (stat(path.c_str(), &fs) < 0)
+		return new Response(OK, this->_server, body, path, true);
+	int statret = stat(path.c_str(), &fs);
+	if (access(path.c_str(), F_OK) != 0 || S_ISDIR(fs.st_mode))
+		return new Response(NOT_FOUND, this->_server, body, path, true);
+	if (statret < 0)
 		return new Response(INTERNAL_SERVER_ERROR, this->_server);
-	if (access(path.c_str(), F_OK) != 0 || !S_ISDIR(fs.st_mode))
-	{
-		Logger::record(INFO) << "File not found: " << path;
-		return new Response(NOT_FOUND, &this->_server);
-	}
 	if (access(path.c_str(), R_OK) != 0)
-		return new Response(FORBIDDEN);
-	return new Response(OK, path, true);
+		return new Response(FORBIDDEN, this->_server);
+	return new Response(OK, this->_server, path, true);
 }
 
 Response* RequestHandler::build_delete_response()
@@ -238,19 +234,19 @@ Response* RequestHandler::build_delete_response()
 
 	this->find_corresponding_location();
 	path = this->get_file_path();
-	if (access(path.c_str(), F_OK) != 0)
-		return new Response(NOT_FOUND, &this->_server);
 	int pos = path.find_last_of('/');
 	std::string dir_path = path.substr(0, pos);
 	std::cout << dir_path;
 	if (dir_path.empty())
 		dir_path = ".";
 	if (access(dir_path.c_str(), W_OK) != 0)
-		return new Response(FORBIDDEN, &this->_server);
+		return new Response(FORBIDDEN, this->_server);
+	if (access(path.c_str(), F_OK) != 0)
+		return new Response(NOT_FOUND, this->_server);
 	if (unlink(path.c_str()) == 0)
-		return new Response(NO_CONTENT, &this->_server);
+		return new Response(NO_CONTENT, this->_server);
 	else
-		return new Response(INTERNAL_SERVER_ERROR, &this->_server);
+		return new Response(INTERNAL_SERVER_ERROR, this->_server);
 }
 
 bool	RequestHandler::get_upload_type(std::string &content_type)
@@ -272,7 +268,8 @@ bool	RequestHandler::get_upload_type(std::string &content_type)
 bool	RequestHandler::get_cgi_ext(std::string &ext)
 {
 	std::string	uri = this->_request.getUri();
-	size_t		dot_pos = uri.find_last_of('.');
+	size_t		q_pos = uri.find_first_of('?');
+	size_t		dot_pos = uri.find_last_of('.', q_pos);
 	static std::string exts[] = {".py", ".sh"};
 
 	if (dot_pos == std::string::npos)

@@ -110,14 +110,14 @@ t_pipe CgiHandler::execute_cgi(WebServ& context, const ServerConfig &server, Htt
 	char	**envp;
 	int		pipefd[4];
 
-	env = build_env(server, request, location, path);
-	envp = map_to_envp(env);
-	if (access(path.c_str(), F_OK) == -1)
+	size_t	q_pos = path.find_first_of('?');
+	std::string real_path = path.substr(0, q_pos);
+	if (access(real_path.c_str(), F_OK) == -1)
 	{
 		pid = F_NOT_FOUND;
 		return (t_pipe){-1, -1};
 	}
-	if (access(path.c_str(), X_OK) == -1)
+	if (access(real_path.c_str(), X_OK) == -1)
 	{
 		pid = F_FORBIDDEN;
 		return (t_pipe){-1, -1};
@@ -130,6 +130,8 @@ t_pipe CgiHandler::execute_cgi(WebServ& context, const ServerConfig &server, Htt
 			return (t_pipe) {-1, -1};
 		}
 	}
+	env = build_env(server, request, location, path);
+	envp = map_to_envp(env);
 	pid = fork();
 	if (pid == -1) {
 		clear_envp(envp);
@@ -144,7 +146,7 @@ t_pipe CgiHandler::execute_cgi(WebServ& context, const ServerConfig &server, Htt
 		close_pipes(pipefd);
 		char **argv = new char*[3];
 		argv[0] = const_cast<char *>(cgi_path.c_str());
-		argv[1] = const_cast<char *>(path.c_str());
+		argv[1] = const_cast<char *>(real_path.c_str());
 		argv[2] = NULL;
 
 		std::map<int, AEventHandler*>::iterator it = context.getRegistery().begin();

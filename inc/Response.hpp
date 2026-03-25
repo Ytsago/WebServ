@@ -15,15 +15,15 @@ class Response
 
 		byteVector	_full_response;
 		int			_status_code;
-		const ServerConfig	*_server;
+		const ServerConfig	_server;
 		ssize_t		_fileSize;
 		std::ifstream	_file;
 
 	public:
 
-		Response(int code, const ServerConfig *server);
-		Response(int code, const ServerConfig *server, byteVector body, std::string path, bool connection);
-		Response(int code, const ServerConfig *server, std::string path, bool connection);
+		Response(int code, const ServerConfig server);
+		Response(int code, const ServerConfig server, byteVector body, std::string path, bool connection);
+		Response(int code, const ServerConfig server, std::string path, bool connection);
 		~Response();
 		Response(const Response &other);
 		Response &operator=(const Response &other);

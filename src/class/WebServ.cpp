@@ -80,10 +80,11 @@ void	WebServ::clearDeadList() {
 
 void	WebServ::checkTimeout() {
 	time_t	now = time(NULL);
+	std::list<AEventHandler*>::reverse_iterator it = timeout.rbegin();
 	AEventHandler*	curr;
 
-	while (!timeout.empty()) {
-		curr = timeout.back();
+	while (it != timeout.rend()) {
+		curr = *it;
 		if (now - curr->getTimeout() > TIMEOUT) {
 			Logger::record(WARNING) << curr->getSocket() << " was timed out.";
 			ClientHandler*	clt = dynamic_cast<ClientHandler*>(curr);
@@ -92,6 +93,7 @@ void	WebServ::checkTimeout() {
 			else
 				if (clt->sendTimeout(*this))
 					deadsHandler.insert(curr);
+			it++;
 		}
 		else
 			return ;

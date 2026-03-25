@@ -13,10 +13,10 @@ class CgiContainer : public AEventHandler
 		size_t			_index;
 		ClientHandler&	_parent;
 		byteVector		 _CgiResult;
-		const ServerConfig	*_server;
+		ServerConfig	_server;
 
 	public:
-		CgiContainer(int epollFd, ClientHandler& parent, int fd, int event, pid_t pid, const ServerConfig *server);
+		CgiContainer(int epollFd, ClientHandler& parent, int fd, int event, pid_t pid, ServerConfig server);
 		~CgiContainer();
 		CgiContainer(const CgiContainer &other);
 		CgiContainer &operator=(const CgiContainer &other);
