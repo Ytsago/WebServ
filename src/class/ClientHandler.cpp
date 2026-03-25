@@ -30,6 +30,8 @@ ClientHandler::ClientHandler(WebServ& context, ServerHandler& host) : _request(N
 	_bytesSent = 0;
 	_keepAlive = false;
 	_pid = -1;
+	_cgiIn = NULL;
+	_cgiOut = NULL;
 }
 
 int	ClientHandler::activateEpoll(int epollFd, int event) {
@@ -133,7 +135,7 @@ int	ClientHandler::receiveMsg(WebServ& context) {
 				Logger::record(INFO) << "Cgi detected, processing...";
 				this->_response = handler.handle_request();
 				std::string	path = handler.get_cgi_path();
-				t_pipe	fds = CgiHandler::execute_cgi(handler.getServer(), *_request, handler.getLocation(), path, _pid);
+				t_pipe	fds = CgiHandler::execute_cgi(context, handler.getServer(), *_request, handler.getLocation(), path, _pid);
 				if (_pid == -1)
 				{
 					Logger::record(ERROR) << "CGI could not be created";
@@ -326,4 +328,8 @@ ClientHandler::~ClientHandler() {
 	if (_request) delete _request;
 	if (_response) delete _response;
 	if (_fileHandler) delete _fileHandler;
+	if (_cgiIn)
+		_cgiIn->_isParentAlive = false;
+	if (_cgiOut)
+		_cgiOut->_isParentAlive = false;
 }

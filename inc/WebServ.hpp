@@ -3,6 +3,7 @@
 
 #include <map>
 #include <list>
+#include <set>
 #include "ConfigParser.hpp"
 
 #define BUFFSIZE 4096
@@ -37,6 +38,8 @@ class WebServ {
 		int	getEpoll() const;	
 		std::list<AEventHandler*>&	getTimeList();
 		std::map<int, AEventHandler*>&	getRegistery();
+		std::set<AEventHandler*>	deadsHandler;
+		void	clearDeadList();
 };
 
 #endif

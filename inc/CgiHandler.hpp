@@ -23,7 +23,7 @@ class CgiHandler
 		CgiHandler(const CgiHandler &other);
 		CgiHandler &operator=(const CgiHandler &other);
 
-		static t_pipe	execute_cgi(const ServerConfig &server, HttpRequest &request, LocationConfig &location, std::string &path, pid_t &pid);
+		static t_pipe	execute_cgi(WebServ& context, const ServerConfig &server, HttpRequest &request, LocationConfig &location, std::string &path, pid_t &pid);
 		int	handleEvent(uint32_t event, WebServ& context);
 
 };

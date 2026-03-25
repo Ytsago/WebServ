@@ -22,9 +22,13 @@ CgiContainer::CgiContainer(int epollFd, ClientHandler& parent, int fd, int event
 		throw AEventHandler::HandlerException("Epoll CTL fail");
 	}
 	_lastAlive = time(NULL);
+	_isParentAlive = true;
 }
 
-CgiContainer::~CgiContainer() {}
+CgiContainer::~CgiContainer() {
+	if (_isParentAlive)
+		_parent.unregisterCgi(this);
+}
 
 int	CgiContainer::handleWrite() {
 	const byteVector&	body =_parent.getRequest().getBody();
@@ -111,8 +115,12 @@ int	CgiContainer::handleEvent(uint32_t event, WebServ& context) {
 	if (force_end) {
 		Logger::record(INFO) << "Building CGI response";
 		Response *response = this->handle_pid();
-		_parent.setResponse(response);
-		_parent.activateEpoll(context.getEpoll(), EPOLLOUT);
+		if (_isParentAlive) {
+			_parent.setResponse(response);
+			_parent.activateEpoll(context.getEpoll(), EPOLLOUT);
+		}
+		else
+			delete response;
 		return CGI_END;
 	}
 	return CGI_OK;

@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #include <sys/epoll.h>
 #include <unistd.h>
+#include "AEventHandler.hpp"
 
 CgiHandler::CgiHandler() {}
 
@@ -102,7 +103,7 @@ static char **map_to_envp(std::map<std::string, std::string> &env)
 	return (envp);
 }
 
-t_pipe CgiHandler::execute_cgi(const ServerConfig &server, HttpRequest &request, LocationConfig &location, std::string &path, pid_t &pid)
+t_pipe CgiHandler::execute_cgi(WebServ& context, const ServerConfig &server, HttpRequest &request, LocationConfig &location, std::string &path, pid_t &pid)
 {
 	std::map<std::string, std::string> env;
 	std::vector<char>	body = request.getBody();
@@ -140,10 +141,20 @@ t_pipe CgiHandler::execute_cgi(const ServerConfig &server, HttpRequest &request,
 		argv[0] = const_cast<char *>(cgi_path.c_str());
 		argv[1] = const_cast<char *>(path.c_str());
 		argv[2] = NULL;
+
+		std::map<int, AEventHandler*>::iterator it = context.getRegistery().begin();
+
+		for (; it != context.getRegistery().end(); it++)
+			close(it->first);
 		execve(location.get_cgi_path().c_str(), argv, envp);
+
+		it = context.getRegistery().begin();
+		for (; it != context.getRegistery().end(); it++)
+			delete (it->second);
+		context.getRegistery().clear();
 		delete [] argv;
 		clear_envp(envp);
-		exit(0);
+		throw std::runtime_error("CGI failed");
 	}
 	clear_envp(envp);
 	close (pipefd[0]);

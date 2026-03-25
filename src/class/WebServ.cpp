@@ -68,6 +68,16 @@ int	WebServ::setConfig(const char* arg) {
 	return CONFIG_OK;
 }
 
+void	WebServ::clearDeadList() {
+	std::set<AEventHandler*>::iterator	it = deadsHandler.begin();
+
+	for (; it != deadsHandler.end(); it++) {
+		removeHandler(*it);
+	}
+
+	deadsHandler.clear();
+}
+
 void	WebServ::checkTimeout() {
 	time_t	now = time(NULL);
 	AEventHandler*	curr;
@@ -78,10 +88,12 @@ void	WebServ::checkTimeout() {
 			Logger::record(WARNING) << curr->getSocket() << " was timed out.";
 			ClientHandler*	clt = dynamic_cast<ClientHandler*>(curr);
 			if (!clt)
-				removeHandler(curr);
+				deadsHandler.insert(curr);
+				// removeHandler(curr);
 			else
 				if (clt->sendTimeout(*this))
-					removeHandler(curr);
+					deadsHandler.insert(curr);
+					// removeHandler(curr);
 		}
 		else
 			return ;
@@ -92,19 +104,23 @@ void	WebServ::run(const char *arg) {
 	epoll_event	events[MAXEVENT];
 
 	if (setConfig(arg) == CONFIG_KO)
-		throw std::runtime_error("Temporary error may need to change it");
+		throw std::runtime_error("Config KO");
 	initHost();
 
 	while(g_running) {
+		clearDeadList();
 		int nfds = epoll_wait(epollFd, events, MAXEVENT, 1000);
 		for (int i = 0; i < nfds; i++) {
 			AEventHandler* incoming = reinterpret_cast<AEventHandler*>(events[i].data.ptr);
+			if (deadsHandler.find(incoming) != deadsHandler.end())
+				continue;
 			switch (incoming->handleEvent(events[i].events, *this)) {
 				case CLT_MSG_ERR:
 				case RM_CLT:
 				case CGI_END:
 				case CGI_KO:
-					removeHandler(incoming);
+					deadsHandler.insert(incoming);
+					// removeHandler(incoming);
 					break;
 
 				default:

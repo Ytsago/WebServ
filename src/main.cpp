@@ -12,7 +12,7 @@ int main(int ac, char* const av[]) {
 			server.run(av[1]);
 		}
 		catch (const std::exception &e) {
-			Logger::record(WARNING) << "Program terminated forcefully";
+			Logger::record(WARNING) << "Program terminated";
 			Logger::record(ERROR) << e.what();
 		}
 	}

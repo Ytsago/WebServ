@@ -12,7 +12,7 @@ class CgiContainer : public AEventHandler
 		int				_state;
 		size_t			_index;
 		ClientHandler&	_parent;
-		byteVector		_CgiResult;
+		byteVector		 _CgiResult;
 
 	public:
 		CgiContainer(int epollFd, ClientHandler& parent, int fd, int event, pid_t pid);
@@ -25,6 +25,8 @@ class CgiContainer : public AEventHandler
 		int			handleRead();
 		int			get_type() const;
 		Response	*handle_pid();
+
+		bool			_isParentAlive;
 };
 
 #endif
