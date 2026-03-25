@@ -189,7 +189,7 @@ Response* RequestHandler::handle_request()
 		return this->build_get_response(path);
 	else if (method == "POST") 
 		return new Response(CREATED, byteVector(), path, true);
-	return new Response(METHOD_NOT_ALLOWED);
+	return new Response(NOT_IMPLEMENTED);
 }
 
 byteVector RequestHandler::get_autodindex(const std::string& path)
